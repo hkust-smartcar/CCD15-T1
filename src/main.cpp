@@ -156,6 +156,8 @@ int main()
 	float window_avg = 0;
 	int state = 0;
 
+	float original_angle = -12.4667;
+
 	Byte i=0;
 	const char *screen1 = "Interstellar\n\n>Sensor State\n\n Balance Mode\n\n Come Back Mode\n\n Run Forest!!!";
 	const char *screen2 ="Interstellar\n"
@@ -187,7 +189,7 @@ int main()
 			">Run Forest!!!";
 
 	char screen5[] = "Go motor!!!";
-	float original_angle = -12.4667;
+
 
 
 	VarManager pGrapher;
@@ -305,7 +307,7 @@ int main()
 
 	float trust_gyro = 1;
 	float trust_accel = 1-trust_gyro;
-	pt= System::Time();
+//	pt= System::Time();
 	//	while(1){
 	//
 	//		mpu6050.Update();
@@ -414,30 +416,10 @@ int main()
 	encoder_r.Update();               //to reset the count
 	encoder_l.Update();
 	while(1){
-
-
-
-
-
 		if(t !=System::Time()){
 			t = System::Time();
-			//		if(t - pt1 <0 ||t - pt2 < 0 ||t- pt3 < 0){
-			//			pt1 = 0;
-			//			pt2 = 0;
-			//			pt3 = 0;
-			//		}
-
-			//		 && (t- pt2) >=2
-
-
-			//		speed_r = encoder_value*10;
-			//		motor_r.SetPower(speed_r);
-			//		motor_l.SetPower(speed_r);
-
 
 			if((int32_t)(t-pt1) >= 11  && yo==0){
-
-
 				//				lincoln.Turn();
 				pt1 = System::Time();
 
@@ -492,8 +474,7 @@ int main()
 
 
 
-
-
+			// Second round to follow the encoder
 			if((int32_t)(t-pt3) >= 3 && yo == 3){
 				//				lincoln.Turn();
 				pt4 = System::Time();
@@ -515,19 +496,12 @@ int main()
 
 
 
-
-
-
 			if((int32_t)(t-pt4) >= 2 && yo ==4){
 				pt5 = System::Time();
 				yo =0;
 				pGrapher.sendWatchData();
 
 			}
-
-
-
-
 		}
 	}
 
@@ -573,8 +547,10 @@ void Balance_function(DirEncoder encoder_r, DirEncoder encoder_l, Mpu6050 mpu605
 	angle_error_change = now_angle_error -last_angle_error;
 
 	last_ideal_count = ideal_count;
-	ideal_count = (int32_t)(ic_Kp*(now_angle_error)+ ic_Kd*angle_error_change);
-	//			ideal_count = 3.1*(now_error)+ 0.9 * angle_error_change;
+	int temp_sign = 1;
+	if (now_angle_error < 0)
+		temp_sign = -1;
+	ideal_count = (int32_t)(ic_Kp * temp_sign * now_angle_error * now_angle_error + ic_Kd * angle_error_change);
 
 	ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
 }
@@ -640,8 +616,8 @@ void Follow_Encoder (DirEncoder encoder_r, DirEncoder encoder_l, int32_t &count_
 		ir_encoder_errorsum += count_r;
 		il_encoder_errorsum += count_l;
 
-		speed_r = (int32_t)(ir_encoder_error *encoder_Kp + ir_encoder_error_change*encoder_Kd/0.003 + ir_encoder_errorsum*encoder_Ki);
-		speed_l = (int32_t)(il_encoder_error *encoder_Kp + il_encoder_error_change*encoder_Kd/0.003 + il_encoder_errorsum*encoder_Ki);
+		speed_r = (int32_t)(ir_encoder_error * encoder_Kp + ir_encoder_error_change*encoder_Kd/0.003 + ir_encoder_errorsum*encoder_Ki);
+		speed_l = (int32_t)(il_encoder_error * encoder_Kp + il_encoder_error_change*encoder_Kd/0.003 + il_encoder_errorsum*encoder_Ki);
 		if(speed_l > 1000 && sign ==1){
 			speed_l = 1000;
 		}
@@ -680,31 +656,3 @@ void Follow_Encoder (DirEncoder encoder_r, DirEncoder encoder_l, int32_t &count_
 }
 
 
-
-
-
-//		console.SetCursorRow(2);
-//		console.PrintString(libutil::String::Format("Omega: %.3f", omega[2]).c_str(), -1);
-//
-//		console.SetCursorRow(4);
-//		console.PrintString(libutil::String::Format("Accel: %.3f", accel[2]).c_str(), -1);
-//
-//		console.SetCursorRow(6);
-//		console.PrintString(libutil::String::Format("Encoder:%.3d", count_l).c_str(), -1);
-
-//		int n = sprintf(buffer, "%.3f,%.3f,",real_angle,peter_angle);
-//		fu.SendBuffer((Byte*)buffer,n);
-//		memset(buffer, 0, n);
-
-
-
-
-
-//		motor_l.SetClockwise(1);
-//		motor_r.SetClockwise(0);
-//		motor_l.SetPower(a+130);
-//		motor_r.SetPower(a+150);
-
-//		console.SetCursorRow((uint8_t)2);
-//		sprintf(buffer, "angle:%.2f,%.2f\nspeed:%d, slope:%f",real_angle,(angle[2]*360)/6.2831852,speed,slope);
-//		console.PrintString((char*)buffer);
