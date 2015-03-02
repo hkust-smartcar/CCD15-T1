@@ -1,4 +1,11 @@
 /*
+ * lincoln_main.h
+ *
+ *  Created on: 2 Mar, 2015
+ *      Author: lincoln
+ */
+
+/*
  * main.cpp
  *
  *  Created on: 26 Dec, 2014
@@ -58,19 +65,6 @@ Mcg::Config Mcg::GetMcgConfig()
 
 }
 }
-
-void Balance_function(DirEncoder encoder_r, DirEncoder encoder_l, Mpu6050 mpu6050, int &last_sign,
-		float &last_accel_angle, float &accel_angle, float &last_gyro_angle, float &gyro_angle,
-		float &output_angle, float trust_gyro, float trust_accel,float &last_angle_error,
-		float &now_angle_error, float original_angle, float &angle_error_change, int &last_ideal_count);
-
-void Follow_Encoder (DirEncoder encoder_r, DirEncoder encoder_l, int32_t &count_l, int32_t &count_r,
-		int &last_sign, int &sign, AlternateMotor motor_r, AlternateMotor motor_l,
-		int32_t &last_ir_encoder_error, int32_t &last_il_encoder_error,
-		int32_t &ir_encoder_error, int32_t &il_encoder_error,
-		int32_t &ir_encoder_error_change, int32_t &il_encoder_error_change,
-		int32_t &ir_encoder_errorsum, 	int32_t &il_encoder_errorsum,
-		int32_t &speed_l, int32_t &speed_r, int32_t &old_speed_l, int32_t &old_speed_r);
 
 /*
 void ReceiveListener(const Byte *bytes, const size_t size)
@@ -243,8 +237,6 @@ int main()
 	float window_avg = 0;
 	int state = 0;
 
-	float original_angle = -12.4667;
-
 	Byte i=0;
 	const char *screen1 = "Interstellar\n\n>Sensor State\n\n Balance Mode\n\n Come Back Mode\n\n Run Forest!!!";
 	const char *screen2 ="Interstellar\n"
@@ -394,7 +386,6 @@ int main()
 
 	float trust_gyro = 1;
 	float trust_accel = 1-trust_gyro;
-<<<<<<< HEAD
 	float raw_angle;
 	pt= System::Time();
 	while(1){
@@ -419,30 +410,6 @@ int main()
 		}
 	}
 	original_angle = raw_angle;
-=======
-//	pt= System::Time();
-	//	while(1){
-	//
-	//		mpu6050.Update();
-	//		System::DelayMs(4);
-	//		accel = mpu6050.GetAccel();
-	//		original_angle = accel[0]*57.29578;
-	//
-	//		//		console.SetCursorRow(4);
-	//		//		sprintf(buffer, "angle:%.3f",original_angle);
-	//		//		console.WriteString((char*)buffer);
-	//		//		System::DelayMs(150);
-	//		t = System::Time();
-	//		if(t-pt <0){
-	//			pt=0;
-	//		}
-	//		if((t-pt)>=2000){
-	//
-	//			break;
-	//
-	//		}
-	//	}
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
 	float accel_angle = original_angle;
 	float last_gyro_angle = original_angle;
@@ -481,12 +448,8 @@ int main()
 	uint32_t pt5 = 0;
 
 
-<<<<<<< HEAD
 	int square_sign = 0;      //for the disappearance of -sign in power two fucntion
 	int sign = 0;
-=======
-	int sign = 0;            //for the disappearance of -sign in power two function
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 	int last_sign = 0;
 	int last_ideal_count = 0;
 	int now_ideal_count = 0;
@@ -538,22 +501,35 @@ int main()
 	encoder_r.Update();               //to reset the count
 	encoder_l.Update();
 	while(1){
+
+
+
+
+
 		if(t !=System::Time()){
 			t = System::Time();
+			//		if(t - pt1 <0 ||t - pt2 < 0 ||t- pt3 < 0){
+			//			pt1 = 0;
+			//			pt2 = 0;
+			//			pt3 = 0;
+			//		}
+
+			//		 && (t- pt2) >=2
+
+
+			//		speed_r = encoder_value*10;
+			//		motor_r.SetPower(speed_r);
+			//		motor_l.SetPower(speed_r);
+
 
 			if((int32_t)(t-pt1) >= 11  && yo==0){
-<<<<<<< HEAD
 				//
 				//
 				//				//				lincoln.Turn();
-=======
-				//				lincoln.Turn();
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 				pt1 = System::Time();
 				//
 				yo = 1;
 
-<<<<<<< HEAD
 //
 //
 //				//				yo++;
@@ -619,14 +595,123 @@ int main()
 
 
 
-=======
-				Balance_function(encoder_r, encoder_l, mpu6050, last_sign,
-						last_accel_angle, accel_angle, last_gyro_angle, gyro_angle,
-						output_angle, trust_gyro, trust_accel,last_angle_error,
-						now_angle_error, original_angle, angle_error_change, last_ideal_count);
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
 			}
+
+
+
+
+
+
+			//				lincoln.Set(0);
+			//					if(output_angle -original_angle< 0){
+			//						sign = -1;
+			//					}
+			//					else{
+			//						sign = 1;
+			//					}
+
+
+			//			}
+
+
+
+
+
+
+
+
+			//			if(t%15 ==0){
+			//				lincoln.Turn();
+			//
+			//				ccd.StartSample();
+			//				while (!ccd.SampleProcess())
+			//				{}
+			//				pixel = ccd.GetData();
+			//
+			//				for(int i = 0; i<LinearCcd::kSensorW; i++){
+			//					all += pixel[i];
+			//				}
+			//				avg = (all / LinearCcd::kSensorW);
+			//				all = 0;
+			//
+			//				for(int i=0;i<LinearCcd::kSensorW; i++){
+			//					if(pixel[i] <avg){
+			//						pixel[i] = 0;
+			//					}
+			//					else if(pixel[i]>=avg){
+			//						pixel[i] = 1;
+			//					}
+			//				}
+			//
+			//				for(int i=0;i<LinearCcd::kSensorW-4; i++){
+			//					window_avg = (pixel[i]+pixel[i+1]+pixel[i+2]+pixel[i+3]+pixel[i+4])/window;
+			//					if(1-window_avg < window_avg){
+			//						pixel[i+2] = 1;
+			//					}
+			//					else if(1-window_avg > window_avg){
+			//						pixel[i+2] = 0;
+			//					}
+			//
+			//				}
+			//
+			//
+			//
+			//
+			//
+			//			}
+
+
+
+
+
+
+
+			//			//					error_count = ideal_count - count_r;
+			//			//					last_error_count = now_error_count;
+			//			//					now_error_count = error_count;
+			//			//					error_count_change = now_error_count - last_error_count;
+			//			//
+			//
+			//			//					while(now_error >30 ||now_error < -30){
+			//			//						motor_l.SetPower(0);
+			//			//						motor_r.SetPower(0);
+			//			//					}
+			//			//
+			//			//					if(ideal_count > 1){
+			//			//						motor_l.SetClockwise(1);
+			//			//						motor_r.SetClockwise(1);
+			//			//
+			//			//						motor_speed += 1*(error_count) + 1*error_count_change;
+			//			//						motor_l.SetPower(abs(motor_speed)+50);
+			//			//						motor_r.SetPower(abs(motor_speed)+50);
+			//			//					}
+			//			//					else if(ideal_count <=1 &&ideal_count >=-1){
+			//			//
+			//			//						motor_l.SetPower(0);
+			//			//						motor_r.SetPower(0);
+			//			//					}
+			//			//					else if(ideal_count < -1){
+			//			//						motor_l.SetClockwise(0);
+			//			//						motor_r.SetClockwise(0);
+			//			//						motor_speed += 1*(error_count) + 0.1*error_count_change;
+			//			//						motor_l.SetPower(abs(motor_speed)+50);
+			//			//						motor_r.SetPower(abs(motor_speed)+50);
+			//			//
+			//			//					}
+			//
+			//
+			//
+			//
+
+
+
+
+
+
+
+
+
 
 
 			if((int32_t)(t-pt1) >= 3 && yo ==1){
@@ -636,7 +721,6 @@ int main()
 				//				pt1 = t;
 				yo = 2;
 
-<<<<<<< HEAD
 				encoder_r.Update();
 				encoder_l.Update();
 
@@ -730,15 +814,6 @@ int main()
 
 
 				}
-=======
-				Follow_Encoder (encoder_r, encoder_l, count_l, count_r,
-						last_sign, sign, motor_r,  motor_l,
-						last_ir_encoder_error, last_il_encoder_error,
-						ir_encoder_error, il_encoder_error,
-						ir_encoder_error_change, il_encoder_error_change,
-						ir_encoder_errorsum, il_encoder_errorsum,
-						speed_l, speed_r, old_speed_l, old_speed_r);
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
 			}
 
@@ -757,7 +832,6 @@ int main()
 
 				yo = 3;
 
-<<<<<<< HEAD
 				encoder_r.Update();
 				encoder_l.Update();
 //
@@ -824,18 +898,13 @@ int main()
 
 
 
-=======
-				Balance_function(encoder_r, encoder_l, mpu6050, last_sign,
-						last_accel_angle, accel_angle, last_gyro_angle, gyro_angle,
-						output_angle, trust_gyro, trust_accel,last_angle_error,
-						now_angle_error, original_angle, angle_error_change, last_ideal_count);
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
 			}
 
 
 
-			// Second round to follow the encoder
+
+
 			if((int32_t)(t-pt3) >= 3 && yo == 3){
 				//				lincoln.Turn();
 				pt4 = System::Time();
@@ -843,7 +912,6 @@ int main()
 				//				pt1 = t;
 				yo = 4;
 
-<<<<<<< HEAD
 
 				encoder_r.Update();
 				encoder_l.Update();
@@ -861,18 +929,8 @@ int main()
 				else if(ideal_count ==0){
 					sign = 2;
 				}
-=======
-				Follow_Encoder (encoder_r, encoder_l, count_l, count_r,
-						last_sign, sign, motor_r,  motor_l,
-						last_ir_encoder_error, last_il_encoder_error,
-						ir_encoder_error, il_encoder_error,
-						ir_encoder_error_change, il_encoder_error_change,
-						ir_encoder_errorsum, il_encoder_errorsum,
-						speed_l, speed_r, old_speed_l, old_speed_r);
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
 
-<<<<<<< HEAD
 				if(sign == 2){
 					motor_l.SetPower(0);
 					motor_r.SetPower(0);
@@ -948,10 +1006,11 @@ int main()
 
 
 				}
-=======
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
 			}
+
+
+
 
 
 
@@ -961,6 +1020,10 @@ int main()
 				pGrapher.sendWatchData();
 
 			}
+
+
+
+
 		}
 	}
 
@@ -970,50 +1033,6 @@ int main()
 }
 
 
-void Balance_function(DirEncoder encoder_r, DirEncoder encoder_l, Mpu6050 mpu6050, int &last_sign,
-		float &last_accel_angle, float &accel_angle, float &last_gyro_angle, float &gyro_angle,
-		float &output_angle, float trust_gyro, float trust_accel,float &last_angle_error,
-		float &now_angle_error, float original_angle, float &angle_error_change, int &last_ideal_count)
-{
-	encoder_r.Update();
-	encoder_l.Update();
-
-
-	//				yo++;
-	mpu6050.Update();
-
-	std::array<float, 3>accel;
-	std::array<float, 3>omega;
-
-	accel = mpu6050.GetAccel();
-	omega = mpu6050.GetOmega();
-
-	last_accel_angle = accel_angle;
-	accel_angle = accel[0]*57.29578;
-	accel_angle = 0.65*last_accel_angle +0.35*accel_angle;
-
-	last_gyro_angle = gyro_angle;
-	gyro_angle += (-1) *omega[1]*0.005+0.006706 + 0.01*(accel_angle - gyro_angle);
-	//			gyro_angle = accel_angle+(-1) *omega[0];
-	//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
-
-
-
-	//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
-	//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
-	output_angle = trust_gyro*gyro_angle +trust_accel*accel_angle;
-	last_angle_error = now_angle_error;
-	now_angle_error = output_angle - original_angle;
-	angle_error_change = now_angle_error -last_angle_error;
-
-	last_ideal_count = ideal_count;
-	int temp_sign = 1;
-	if (now_angle_error < 0)
-		temp_sign = -1;
-	ideal_count = (int32_t)(ic_Kp * temp_sign * now_angle_error * now_angle_error + ic_Kd * angle_error_change);
-
-	ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
-}
 
 
 
@@ -1029,117 +1048,19 @@ void Balance_function(DirEncoder encoder_r, DirEncoder encoder_l, Mpu6050 mpu605
 	//		console.SetCursorRow(6);
 	//		console.PrintString(libutil::String::Format("Encoder:%.3d", count_l).c_str(), -1);
 
-<<<<<<< HEAD
 	//		int n = sprintf(buffer, "%.3f,%.3f,",real_angle,peter_angle);
 	//		fu.SendBuffer((Byte*)buffer,n);
 	//		memset(buffer, 0, n);
-=======
-void Follow_Encoder (DirEncoder encoder_r, DirEncoder encoder_l, int32_t &count_l, int32_t &count_r,
-		int &last_sign, int &sign, AlternateMotor motor_r, AlternateMotor motor_l,
-		int32_t &last_ir_encoder_error, int32_t &last_il_encoder_error,
-		int32_t &ir_encoder_error, int32_t &il_encoder_error,
-		int32_t &ir_encoder_error_change, int32_t &il_encoder_error_change,
-		int32_t &ir_encoder_errorsum, 	int32_t &il_encoder_errorsum,
-		int32_t &speed_l, int32_t &speed_r, int32_t &old_speed_l, int32_t &old_speed_r)
-{
-	encoder_r.Update();
-	encoder_l.Update();
-
-	count_r = -1*encoder_r.GetCount() / 3 * 4;
-	count_l = encoder_l.GetCount() / 3 * 4;
-
-	last_sign = sign;
-	if(ideal_count > 0){
-		sign = 1;
-	}
-	else if(ideal_count < 0){
-		sign = 0;
-	}
-	else if(ideal_count ==0){
-		sign = 2;
-	}
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
 
-	if(sign == 2){
-		motor_l.SetPower(0);
-		motor_r.SetPower(0);
-	}
-
-	else{
-
-		if(last_sign != sign){
-			motor_l.SetPower(0);
-			motor_r.SetPower(0);
-			motor_l.SetClockwise(sign);
-			motor_r.SetClockwise(sign);
-		}
-
-		last_ir_encoder_error = ir_encoder_error;
-		ir_encoder_error = ideal_count - count_r;
-		last_il_encoder_error = il_encoder_error;
-		il_encoder_error = ideal_count - count_l;
 
 
-		il_encoder_error_change = il_encoder_error -last_il_encoder_error;
-		ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
 
-<<<<<<< HEAD
 	//		motor_l.SetClockwise(1);
 	//		motor_r.SetClockwise(0);
 	//		motor_l.SetPower(a+130);
 	//		motor_r.SetPower(a+150);
-=======
-		old_speed_r = speed_r;
-		old_speed_l = speed_l;
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
 
-<<<<<<< HEAD
 	//		console.SetCursorRow((uint8_t)2);
 	//		sprintf(buffer, "angle:%.2f,%.2f\nspeed:%d, slope:%f",real_angle,(angle[2]*360)/6.2831852,speed,slope);
 	//		console.PrintString((char*)buffer);
-=======
-		ir_encoder_errorsum += count_r;
-		il_encoder_errorsum += count_l;
-
-		speed_r = (int32_t)(ir_encoder_error * encoder_Kp + ir_encoder_error_change*encoder_Kd/0.003 + ir_encoder_errorsum*encoder_Ki);
-		speed_l = (int32_t)(il_encoder_error * encoder_Kp + il_encoder_error_change*encoder_Kd/0.003 + il_encoder_errorsum*encoder_Ki);
-		if(speed_l > 1000 && sign ==1){
-			speed_l = 1000;
-		}
-		else if(speed_l < 0 && sign ==1){
-			speed_l = 0;
-		}
-		else if(speed_l > 0 && sign ==0){
-			speed_l = 0;
-		}
-		else if(speed_l < -1000 && sign ==0){
-			speed_l = -1000;
-		}
-
-
-		if(speed_r > 1000 && sign ==1){
-			speed_r = 1000;
-		}
-		else if(speed_r < 0 && sign ==1){
-			speed_r = 0;
-		}
-		else if(speed_r > 0 && sign ==0){
-			speed_r = 0;
-		}
-		else if(speed_r < -1000 && sign ==0){
-			speed_r = -1000;
-		}
-
-		speed_r = 0.75*old_speed_r + 0.25*speed_r;
-		speed_l = 0.75*old_speed_l + 0.25*speed_l;
-
-		motor_r.SetPower(abs(speed_r));
-		motor_l.SetPower(abs(speed_l));
-
-
-	}
-}
-
-
->>>>>>> branch 'master' of https://github.com/hkust-smartcar/CCD15-T1.git
