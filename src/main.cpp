@@ -746,8 +746,8 @@ int main()
 				speed_r = (int32_t)(ir_encoder_error * encoder_Kp + lincoln1 + ir_encoder_errorsum*encoder_Ki*0.003);
 				speed_l = (int32_t)(il_encoder_error * encoder_Kp + (float)(il_encoder_error_change * encoder_Kd/3) + il_encoder_errorsum*encoder_Ki*0.003);
 
-				speed_r = ratio_old * old_speed_r + ratio_new * speed_r;
-				speed_l = ratio_old * old_speed_l + ratio_new * speed_l;
+//				speed_r = ratio_old * old_speed_r + ratio_new * speed_r;
+//				speed_l = ratio_old * old_speed_l + ratio_new * speed_l;
 
 				speed_r = speed_r*turn[1];
 				speed_l = speed_l*turn[0];
@@ -892,8 +892,8 @@ int main()
 			speed_r = (int32_t)(ir_encoder_error * encoder_Kp + lincoln1 + ir_encoder_errorsum*encoder_Ki*0.003);
 			speed_l = (int32_t)(il_encoder_error * encoder_Kp + (float)(il_encoder_error_change * encoder_Kd/3) + il_encoder_errorsum*encoder_Ki*0.003);
 
-			speed_r = ratio_old * old_speed_r + ratio_new * speed_r;
-			speed_l = ratio_old * old_speed_l + ratio_new * speed_l;
+//			speed_r = ratio_old * old_speed_r + ratio_new * speed_r;
+//			speed_l = ratio_old * old_speed_l + ratio_new * speed_l;
 
 			speed_r = speed_r*turn[1];
 			speed_l = speed_l*turn[0];
