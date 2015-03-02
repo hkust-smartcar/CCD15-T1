@@ -2,7 +2,7 @@
  * VarManager.cpp
  *
  * Author: PeterLau
- * Version: 2.7.5
+ * Version: 2.8.0
  *
  * Copyright (c) 2014-2015 HKUST SmartCar Team
  * Refer to LICENSE for details
@@ -48,6 +48,7 @@ FtdiFt232r::Config VarManager::get232UartConfig(const uint8_t id)
 
 VarManager::VarManager(void)
 :
+	rx_threshold(7),
 	m_uart(get106UartConfig(0)),
 	isStarted(false)
 {
@@ -64,34 +65,43 @@ VarManager::~VarManager()
 
 void VarManager::listener(const Byte *bytes, const size_t size)
 {
-//	if (size != m_pd_instance->rx_threshold)
-//		return ;
+	m_pd_instance->rx_buffer.insert(m_pd_instance->rx_buffer.end(), bytes, bytes + size);
 
-	switch (bytes[0])
+	if (m_pd_instance->rx_buffer.size() < m_pd_instance->rx_threshold)
+		return ;
+
+	if (m_pd_instance->rx_buffer.size() == m_pd_instance->rx_threshold)
 	{
-	case 's':
-		m_pd_instance->isStarted = true;
-		break;
+		if (m_pd_instance->rx_buffer.at(1))
+		{
+			switch (m_pd_instance->rx_buffer.at(0))
+			{
+			case 's':
+				m_pd_instance->isStarted = true;
+				break;
 
-	case 'e':
-		m_pd_instance->isStarted = false;
-		break;
+			case 'e':
+				m_pd_instance->isStarted = false;
+				break;
 
-	case 'w':
-		m_pd_instance->sendWatchedVarInfo();
-		break;
+			case 'w':
+				m_pd_instance->sendWatchedVarInfo();
+				break;
 
-	case 'h':
-		m_pd_instance->sendSharedVarInfo();
-		break;
+			case 'h':
+				m_pd_instance->sendSharedVarInfo();
+				break;
 
-	case 'c':
-		// TODO: change variable here
-		break;
+			case 'c':
+				// TODO: change variable here
+				break;
+			}
+		}
+		else
+			m_pd_instance->m_origin_listener(m_pd_instance->rx_buffer.data(), m_pd_instance->rx_buffer.size());
 	}
 
-	if (m_pd_instance->m_origin_listener)
-		m_pd_instance->m_origin_listener(bytes, size);
+	m_pd_instance->rx_buffer.clear();
 }
 
 void VarManager::sendWatchData(void)

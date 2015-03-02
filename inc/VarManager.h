@@ -2,7 +2,7 @@
  * VarManager.h
  *
  * Author: PeterLau
- * Version: 2.7.5
+ * Version: 2.8.0
  *
  * Copyright (c) 2014-2015 HKUST SmartCar Team
  * Refer to LICENSE for details
@@ -53,7 +53,7 @@ public:
 	{
 	public:
 
-		static TypeId &Init()
+		static void Init()
 		{
 			if (!m_instance)
 				m_instance = new TypeId;
@@ -113,7 +113,9 @@ private:
 	std::vector<ObjMng>				watchedObjMng;
 
 	bool							isStarted;
-	const Byte						rx_threshold = 6;
+	const Byte						rx_threshold;
+
+	std::vector<Byte>				rx_buffer;
 
 	static void listener(const Byte *bytes, const size_t size);
 
