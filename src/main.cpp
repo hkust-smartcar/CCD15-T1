@@ -531,6 +531,8 @@ int main()
 				motor_r.SetPower(0);
 				yo = 1;
 
+				encoder_r.Update();
+				encoder_l.Update();
 				//
 				//
 				//				//				yo++;
