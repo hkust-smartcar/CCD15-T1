@@ -27,6 +27,7 @@
 #include <libutil/string.h>
 #include <libutil/kalman_filter.h>
 #include "VarManager.h"
+#include <kalman.h>
 
 #define BLACK           0x0000
 #define BLUE            0x001F
@@ -73,28 +74,15 @@ Byte i=0;
 	r_encoder.id = 1;
 	DirEncoder encoder_r(r_encoder);
 
-typedef class Wheel_l{
-	DirEncoder encoder_l;
-	int32_t count_l = 0;
 
-	AlternateMotor::Config l_motor;
-	l_motor.id = 0;
-	AlternateMotor motor_r(l_motor);
-
-	int32_t last_il_encoder_error = 0;
-	int32_t il_encoder_error = 0;
-	int32_t il_encoder_error_change = 0;
-	int32_t il_encoder_errorsum = 0;
-	int32_t speed_l = 0;
-	int32_t old_speed_l = 0;
-} WHEEL_L;
+	AlternateMotor::Config r_motor;
+    r_motor.id = 1;
+	AlternateMotor motor_l(r_motor);
 
 typedef class Wheel_r{
 public:
 	DirEncoder encoder_r;
 	int32_t count_r = 0;
-
-	AlternateMotor motor_l(r_motor);
 
 	int32_t last_ir_encoder_error = 0;
 	int32_t ir_encoder_error = 0;
@@ -102,9 +90,6 @@ public:
 	int32_t ir_encoder_errorsum = 0;
 	int32_t speed_r = 0;
 	int32_t old_speed_r = 0;
-private:
-	AlternateMotor::Config r_motor;
-	r_motor.id = 1;
 
 } WHEEL_R;
 
@@ -342,7 +327,23 @@ int main()
 	typeconfig.is_text_wrap = true;
 	LcdTypewriter type(typeconfig);
 
-	WHEEL_L wheel_l;
+	AlternateMotor::Config l_motor;
+	l_motor.id = 0;
+	AlternateMotor motor_r(l_motor);
+
+typedef class Wheel_l WHEEL_L;
+class Wheel_l{
+	DirEncoder encoder_l;
+	int32_t count_l = 0;
+	AlternateMotor motor_l;
+	int32_t last_il_encoder_error = 0;
+	int32_t il_encoder_error = 0;
+	int32_t il_encoder_error_change = 0;
+	int32_t il_encoder_errorsum = 0;
+	int32_t speed_l = 0;
+	int32_t old_speed_l = 0;
+} wheel_l;
+
 	WHEEL_R wheel_r;
 	COMMON common;
 	GYRO_ACCEL gyro_accel;
