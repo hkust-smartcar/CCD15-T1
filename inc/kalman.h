@@ -30,7 +30,7 @@ public:
 
 private:
 
-	double _Q, _R[2],__X, _x,__P, _p, _K[2], _yk[2], _Sk[2][2];
+	double _Q, _R[2],__X, _x,___P, _p, _K[2], _yk[2], _Sk[2][2];
 	bool isOneDim;
 	void MeasurementResidual(double, double);
 	void MeasurementResidualCovariance();

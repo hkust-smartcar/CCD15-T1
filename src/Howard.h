@@ -54,36 +54,34 @@ int32_t ideal_count = 0;
 float original_angle = 0;
 Byte i=0;
 
-	uint32_t pt1 = 0;
-	uint32_t pt2 = 0;
-	uint32_t pt3 = 0;
-	uint32_t pt4 = 0;
-	uint32_t pt5 = 0;
+uint32_t pt1 = 0;
+uint32_t pt2 = 0;
+uint32_t pt3 = 0;
+uint32_t pt4 = 0;
+uint32_t pt5 = 0;
 
-	Byte yo = 0;                      //to organize the sequence of code
-
-
+Byte yo = 0;                      //to organize the sequence of code
 
 
 
-	DirEncoder::Config enconfig;
-	enconfig.id = 0;
-	DirEncoder encoder_l(enconfig);
+class Wheel_l{
+	DirEncoder encoder_l;
+	int32_t count_l = 0;
+	AlternateMotor motor_l;
+	int32_t last_il_encoder_error = 0;
+	int32_t il_encoder_error = 0;
+	int32_t il_encoder_error_change = 0;
+	int32_t il_encoder_errorsum = 0;
+	int32_t speed_l = 0;
+	int32_t old_speed_l = 0;
+} wheel_l;
 
-	DirEncoder::Config r_encoder;
-	r_encoder.id = 1;
-	DirEncoder encoder_r(r_encoder);
 
-
-	AlternateMotor::Config r_motor;
-    r_motor.id = 1;
-	AlternateMotor motor_l(r_motor);
-
-typedef class Wheel_r{
+class Wheel_r{
 public:
 	DirEncoder encoder_r;
 	int32_t count_r = 0;
-
+	AlternateMotor motor_r;
 	int32_t last_ir_encoder_error = 0;
 	int32_t ir_encoder_error = 0;
 	int32_t ir_encoder_error_change = 0;
@@ -91,34 +89,34 @@ public:
 	int32_t speed_r = 0;
 	int32_t old_speed_r = 0;
 
-} WHEEL_R;
+} wheel_r;
 
-typedef class Common_Para{
+class Common_Para{
 public:
 	int last_sign = 0;
 	int sign = 0;
 	float old_ratio = 0.75;
-}  COMMON;
+}  common;
 
-typedef class Gyro_Accel{
+class Gyro_Accel{
 public:
 	Mpu6050 mpu6050;
 	std::array<float, 3>accel;
 	std::array<float, 3>angle;
 	std::array<float, 3>omega;
-	float accel_angle = original_angle;
-	float last_gyro_angle = original_angle;
-	float gyro_angle = original_angle;
-	float last_accel_angle = original_angle;
-	float output_angle;
+	double accel_angle = original_angle;
+	double last_gyro_angle = original_angle;
+	double gyro_angle = original_angle;
+	double last_accel_angle = original_angle;
+	double output_angle;
 	float trust_gyro = 1;
 	float trust_accel = 1 - trust_gyro;
-	float last_angle_error = 0;
-	float now_angle_error = 0;
-	float angle_error_change;
-} GYRO_ACCEL;
+	double last_angle_error = 0;
+	double now_angle_error = 0;
+	double angle_error_change;
+} gyro_accel;
 
-typedef class Lcd{
+class Lcd{
 	uint16_t result;
 	char *buffer = new char[125]{0};
 	char *words = new char[125]{0};
@@ -130,6 +128,7 @@ typedef class Lcd{
 	float window = 5.0;
 	float window_avg = 0;
 	int state = 0;
+
 	const char *screen1 = "Interstellar\n\n>Sensor State\n\n Balance Mode\n\n Come Back Mode\n\n Run Forest!!!";
 	const char *screen2 ="Interstellar\n"
 			"\n"
@@ -160,12 +159,12 @@ typedef class Lcd{
 			">Run Forest!!!";
 
 	char screen5[] = "Go motor!!!";
-} LCD;
+} lcd;
 
 
 
-void Balance_function(
-		 float original_angle,  int &last_ideal_count);
+void Balance_function(Wheel_l &wheel_l, Wheel_r &wheel_r, float original_angle, int &last_ideal_count, Gyro_Accel &gyro_accel);
+void Follow_Encoder (Wheel_l &wheel_l, Wheel_r &wheel_r, Common_Para &common);
 
 char CCD;
 using namespace libsc::k60;
@@ -251,16 +250,16 @@ int main()
 {
 	VarManager pGrapher;
 
-
-
 	//intialize the system
 	System::Init();
 	Timer::TimerInt t = 0;
 	Timer::TimerInt pt = t;
 	pt = System::Time();
 
+/*
 
 	//Initalize the BT module
+
 	//	FtdiFt232r::Config bt_config;
 	//	bt_config.id = 0;
 	//	bt_config.rx_irq_threshold = 2;
@@ -281,21 +280,21 @@ int main()
 	//	servoconfig.id = 0;
 	//	TowerProMg995 servo(servoconfig);
 
-	Mpu6050::Config gyro_config;
-	//sensitivity of gyro
-	gyro_config.gyro_range = Mpu6050::Config::Range::kLarge;
-	//sensitivity of accelerometer
-	gyro_config.accel_range = Mpu6050::Config::Range::kLarge;
-	Mpu6050 mpu6050(gyro_config);
-
-
-	//	Mma8451q::Config accel_config;
+	 	//	Mma8451q::Config accel_config;
 	//	//sensitivity of accelerometer
 	//	accel_config.id = 0;
 	//	accel_config.scl_pin = Pin::Name::kPtb0;
 	//	accel_config.sda_pin = Pin::Name::kPtb1;
 	//	Mma8451q myAccel(accel_config);
 
+*/
+
+	Mpu6050::Config gyro_config;
+	//sensitivity of gyro
+	gyro_config.gyro_range = Mpu6050::Config::Range::kLarge;
+	//sensitivity of accelerometer
+	gyro_config.accel_range = Mpu6050::Config::Range::kLarge;
+	Mpu6050 mpu6050(gyro_config);
 
 	LinearCcd ccd(0);
 
@@ -331,56 +330,37 @@ int main()
 	l_motor.id = 0;
 	AlternateMotor motor_r(l_motor);
 
-typedef class Wheel_l WHEEL_L;
-class Wheel_l{
-	DirEncoder encoder_l;
-	int32_t count_l = 0;
-	AlternateMotor motor_l;
-	int32_t last_il_encoder_error = 0;
-	int32_t il_encoder_error = 0;
-	int32_t il_encoder_error_change = 0;
-	int32_t il_encoder_errorsum = 0;
-	int32_t speed_l = 0;
-	int32_t old_speed_l = 0;
-} wheel_l;
+	DirEncoder::Config enconfig;
+	enconfig.id = 0;
+	DirEncoder encoder_l(enconfig);
 
-	WHEEL_R wheel_r;
-	COMMON common;
-	GYRO_ACCEL gyro_accel;
+	DirEncoder::Config r_encoder;
+	r_encoder.id = 1;
+	DirEncoder encoder_r(r_encoder);
 
+	AlternateMotor::Config r_motor;
+	r_motor.id = 1;
+	AlternateMotor motor_l(r_motor);
 
 
 	lcd.Clear(0);
 	System::DelayMs(25);
-//	pt= System::Time();
-	//	while(1){
-	//
-	//		mpu6050.Update();
-	//		System::DelayMs(4);
-	//		accel = mpu6050.GetAccel();
-	//		original_angle = accel[0]*57.29578;
-	//
-	//		//		console.SetCursorRow(4);
-	//		//		sprintf(buffer, "angle:%.3f",original_angle);
-	//		//		console.WriteString((char*)buffer);
-	//		//		System::DelayMs(150);
-	//		t = System::Time();
-	//		if(t-pt <0){
-	//			pt=0;
-	//		}
-	//		if((t-pt)>=2000){
-	//
-	//			break;
-	//
-	//		}
-	//	}
+	pt= System::Time();
+	while(1){
 
+		mpu6050.Update();
+		System::DelayMs(4);
+		gyro_accel.accel = mpu6050.GetAccel();
+		original_angle = gyro_accel.accel[0]*57.29578;
 
+		t = System::Time();
+		if(t-pt <0){
+			pt=0;
+		}
+		if((t-pt)>=2000)
+			break;
+	}
 
-
-	//	KF m_gyro_kf[3];
-	//	float kalman_value[2] = {0.3f, 1.5f};
-	//	kalman_filter_init(&m_gyro_kf[0], 0.01f, &kalman_value, original_angle, 1);
 
 	//********************************************************************************************************************
 	//graph testing variable
@@ -393,19 +373,23 @@ class Wheel_l{
 	//	pGrapher.addWatchedVar(&gyro_angle, "2");
 	//	pGrapher.addWatchedVar(&accel_angle, "3");
 	//	pGrapher.addWatchedVar(&output_angle, "4");
-//	pGrapher.addWatchedVar(&count_r, "1");
-//	pGrapher.addWatchedVar(&count_l, "2");
-//	pGrapher.addWatchedVar(&output_angle, "3");
-//	pGrapher.addWatchedVar(&ideal_count, "4");
-//	pGrapher.addWatchedVar(&ic_Kp, "5");
-//	pGrapher.addWatchedVar(&ic_Kd, "6");
-//	pGrapher.addWatchedVar(&encoder_Ki, "7");
+	//	pGrapher.addWatchedVar(&count_r, "1");
+	//	pGrapher.addWatchedVar(&count_l, "2");
+	//	pGrapher.addWatchedVar(&output_angle, "3");
+	//	pGrapher.addWatchedVar(&ideal_count, "4");
+	//	pGrapher.addWatchedVar(&ic_Kp, "5");
+	//	pGrapher.addWatchedVar(&ic_Kd, "6");
+	//	pGrapher.addWatchedVar(&encoder_Ki, "7");
 
 	//	pGrapher.addWatchedVar(&kalman_value[0], "6");
 	//	pGrapher.addWatchedVar(&kalman_value[1], "7");
 
 	pGrapher.Init(&myListener);
 
+	double Q = 0.001;
+	double value[2] = {0.001, 0.2600496668};
+	double P;
+	Kalman kalman(Q, value, original_angle, 1);
 
 
 	encoder_r.Update();               //to reset the count
@@ -417,13 +401,8 @@ class Wheel_l{
 			if((int32_t)(t-pt1) >= 11  && yo==0){
 				//				lincoln.Turn();
 				pt1 = System::Time();
-
 				yo = 1;
-
-//				Balance_function(encoder_r, encoder_l, mpu6050, last_sign,
-//						last_accel_angle, accel_angle, last_gyro_angle, gyro_angle,
-//						output_angle, trust_gyro, trust_accel,last_angle_error,
-//						now_angle_error, original_angle, angle_error_change, last_ideal_count);
+				Balance_function(wheel_l, wheel_r, original_angle, last_ideal_count, gyro_accel);
 
 			}
 
@@ -431,21 +410,9 @@ class Wheel_l{
 			if((int32_t)(t-pt1) >= 3 && yo ==1){
 				//				lincoln.Turn();
 				pt2=System::Time();
-
-				//				pt1 = t;
 				yo = 2;
-
-				Follow_Encoder (encoder_r, encoder_l, count_l, count_r,
-						last_sign, sign, motor_r,  motor_l,
-						last_ir_encoder_error, last_il_encoder_error,
-						ir_encoder_error, il_encoder_error,
-						ir_encoder_error_change, il_encoder_error_change,
-						ir_encoder_errorsum, il_encoder_errorsum,
-						speed_l, speed_r, old_speed_l, old_speed_r, old_ratio);
-
+				Follow_Encoder (wheel_l, wheel_r, common);
 			}
-
-
 
 			/*second round to get angle and encoder
 			 *
@@ -453,40 +420,22 @@ class Wheel_l{
 			 *
 			 *
 			 */
-
 			if((int32_t)(t-pt2) >= 2  && yo == 2){
 				//				lincoln.Turn();
 				pt3 = System::Time();
 
 				yo = 3;
-
-//				Balance_function(encoder_r, encoder_l, mpu6050, last_sign,
-//						last_accel_angle, accel_angle, last_gyro_angle, gyro_angle,
-//						output_angle, trust_gyro, trust_accel,last_angle_error,
-//						now_angle_error, original_angle, angle_error_change, last_ideal_count);
+				Balance_function(wheel_l, wheel_r, original_angle, last_ideal_count, gyro_accel);
 
 			}
-
 
 
 			// Second round to follow the encoder
 			if((int32_t)(t-pt3) >= 3 && yo == 3){
 				//				lincoln.Turn();
 				pt4 = System::Time();
-
-				//				pt1 = t;
 				yo = 4;
-
-				Follow_Encoder (encoder_r, encoder_l, count_l, count_r,
-						last_sign, sign, motor_r,  motor_l,
-						last_ir_encoder_error, last_il_encoder_error,
-						ir_encoder_error, il_encoder_error,
-						ir_encoder_error_change, il_encoder_error_change,
-						ir_encoder_errorsum, il_encoder_errorsum,
-						speed_l, speed_r, old_speed_l, old_speed_r, old_ratio);
-
-
-
+				Follow_Encoder (wheel_l, wheel_r, common);
 			}
 
 
@@ -500,12 +449,13 @@ class Wheel_l{
 		}
 	}
 
-
-
 }
 
 
-void Balance_function(Wheel_l wheel_l, Wheel_r wheel_r, float original_angle, int &last_ideal_count, Gyro_Accel gyro_accel)
+
+
+
+void Balance_function(Wheel_l &wheel_l, Wheel_r &wheel_r, float original_angle, int &last_ideal_count, Gyro_Accel &gyro_accel, Kalman kalman)
 {
 	wheel_r.encoder_r.Update();
 	wheel_l.encoder_l.Update();
@@ -528,10 +478,15 @@ void Balance_function(Wheel_l wheel_l, Wheel_r wheel_r, float original_angle, in
 	//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
 
 
+	kalman.Filtering(&gyro_accel.output_angle, gyro_accel.gyro_angle, gyro_accel.accel_angle);
 
 	//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
 	//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
-	gyro_accel.output_angle = gyro_accel.trust_gyro*gyro_accel.gyro_angle +gyro_accel.trust_accel * gyro_accel.accel_angle;
+	//	gyro_accel.output_angle = gyro_accel.trust_gyro*gyro_accel.gyro_angle +gyro_accel.trust_accel * gyro_accel.accel_angle;
+
+
+
+
 	gyro_accel.last_angle_error = gyro_accel.now_angle_error;
 	gyro_accel.now_angle_error = gyro_accel.output_angle - original_angle;
 	gyro_accel.angle_error_change = gyro_accel.now_angle_error - gyro_accel.last_angle_error;
@@ -549,8 +504,7 @@ void Balance_function(Wheel_l wheel_l, Wheel_r wheel_r, float original_angle, in
 
 
 
-
-void Follow_Encoder (Wheel_l wheel_l, Wheel_r wheel_r, Common_Para common)
+void Follow_Encoder (Wheel_l &wheel_l, Wheel_r &wheel_r, Common_Para &common)
 {
 	wheel_r.encoder_r.Update();
 	wheel_l.encoder_l.Update();
@@ -600,11 +554,11 @@ void Follow_Encoder (Wheel_l wheel_l, Wheel_r wheel_r, Common_Para common)
 		wheel_l.il_encoder_errorsum += wheel_l.il_encoder_error * 0.003;
 
 		wheel_r.speed_r = (int32_t)(wheel_r.ir_encoder_error * encoder_Kp
-				                  + wheel_r.ir_encoder_error_change*encoder_Kd/0.003
-								  + wheel_r.ir_encoder_errorsum * encoder_Ki);
+				+ wheel_r.ir_encoder_error_change*encoder_Kd/0.003
+				+ wheel_r.ir_encoder_errorsum * encoder_Ki);
 		wheel_l.speed_l = (int32_t)(wheel_l.il_encoder_error * encoder_Kp
-				                  + wheel_l.il_encoder_error_change*encoder_Kd/0.003
-								  + wheel_l.il_encoder_errorsum * encoder_Ki);
+				+ wheel_l.il_encoder_error_change*encoder_Kd/0.003
+				+ wheel_l.il_encoder_errorsum * encoder_Ki);
 		if(wheel_l.speed_l > 1000 && common.sign ==1){
 			wheel_l.speed_l = 1000;
 		}
@@ -632,8 +586,8 @@ void Follow_Encoder (Wheel_l wheel_l, Wheel_r wheel_r, Common_Para common)
 			wheel_r.speed_r = -1000;
 		}
 
-		wheel_r.speed_r = common.old_ratio * wheel_r.old_speed_r + (1 - common.old_ratio) * wheel_r.speed_r;
-		wheel_l.speed_l = common.old_ratio * wheel_l.old_speed_l + (1 - common.old_ratio) * wheel_l.speed_l;
+		//		wheel_r.speed_r = common.old_ratio * wheel_r.old_speed_r + (1 - common.old_ratio) * wheel_r.speed_r;
+		//		wheel_l.speed_l = common.old_ratio * wheel_l.old_speed_l + (1 - common.old_ratio) * wheel_l.speed_l;
 
 		wheel_r.motor_r.SetPower(abs(wheel_r.speed_r));
 		wheel_l.motor_l.SetPower(abs(wheel_l.speed_l));
