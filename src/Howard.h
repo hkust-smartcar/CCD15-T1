@@ -190,6 +190,146 @@ Mcg::Config Mcg::GetMcgConfig()
 
 void Follow_Encoder ();
 
+void Balance_function(Wheel_l &wheel_l, Wheel_r &wheel_r, float original_angle, int &last_ideal_count, Gyro_Accel &gyro_accel, Kalman kalman)
+{
+	wheel_r.encoder_r.Update();
+	wheel_l.encoder_l.Update();
+
+	gyro_accel.mpu6050.Update();
+
+	std::array<float, 3>accel;
+	std::array<float, 3>omega;
+
+	accel = gyro_accel.mpu6050.GetAccel();
+	omega = gyro_accel.mpu6050.GetOmega();
+
+	gyro_accel.last_accel_angle = gyro_accel.accel_angle;
+	gyro_accel.accel_angle = accel[0]*57.29578;
+	gyro_accel.accel_angle = 0.65*gyro_accel.last_accel_angle +0.35*gyro_accel.accel_angle;
+
+	gyro_accel.last_gyro_angle = gyro_accel.gyro_angle;
+	gyro_accel.gyro_angle += (-1) *omega[1]*0.005 + 0.01*(gyro_accel.accel_angle - gyro_accel.gyro_angle);
+	//			gyro_angle = accel_angle+(-1) *omega[0];
+	//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
+
+
+	kalman.Filtering(&gyro_accel.output_angle, gyro_accel.gyro_angle, gyro_accel.accel_angle);
+
+	//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
+	//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
+	//	gyro_accel.output_angle = gyro_accel.trust_gyro*gyro_accel.gyro_angle +gyro_accel.trust_accel * gyro_accel.accel_angle;
+
+
+
+
+	gyro_accel.last_angle_error = gyro_accel.now_angle_error;
+	gyro_accel.now_angle_error = gyro_accel.output_angle - original_angle;
+	gyro_accel.angle_error_change = gyro_accel.now_angle_error - gyro_accel.last_angle_error;
+
+	last_ideal_count = ideal_count;
+	int temp_sign = 1;
+	if (gyro_accel.now_angle_error < 0)
+		temp_sign = -1;
+	ideal_count = (int32_t)(ic_Kp * temp_sign * gyro_accel.now_angle_error + ic_Kd * gyro_accel.angle_error_change);
+
+	ideal_count = (int32_t)(0.5 * last_ideal_count + 0.5 * ideal_count);
+}
+
+
+
+
+
+void Follow_Encoder (Wheel_l &wheel_l, Wheel_r &wheel_r, Common_Para &common)
+{
+	wheel_r.encoder_r.Update();
+	wheel_l.encoder_l.Update();
+
+	wheel_r.count_r = -1 * wheel_r.encoder_r.GetCount() / 3;
+	wheel_l.count_l = wheel_l.encoder_l.GetCount() / 3;
+
+	common.last_sign = common.sign;
+	if(ideal_count > 0){
+		common.sign = 1;
+	}
+	else if(ideal_count < 0){
+		common.sign = 0;
+	}
+	else if(ideal_count ==0){
+		common.sign = 2;
+	}
+
+
+	if(common.sign == 2){
+		wheel_l.motor_l.SetPower(0);
+		wheel_r.motor_r.SetPower(0);
+	}
+
+	else{
+
+		if(common.last_sign != common.sign){
+			wheel_l.motor_l.SetPower(0);
+			wheel_r.motor_r.SetPower(0);
+			wheel_l.motor_l.SetClockwise(common.sign);
+			wheel_r.motor_r.SetClockwise(common.sign);
+		}
+
+		wheel_r.last_ir_encoder_error = wheel_r.ir_encoder_error;
+		wheel_r.ir_encoder_error = ideal_count - wheel_r.count_r;
+		wheel_l.last_il_encoder_error = wheel_l.il_encoder_error;
+		wheel_l.il_encoder_error = ideal_count - wheel_l.count_l;
+
+
+		wheel_l.il_encoder_error_change = wheel_l.il_encoder_error -wheel_l.last_il_encoder_error;
+		wheel_r.ir_encoder_error_change = wheel_r.ir_encoder_error -wheel_r.last_ir_encoder_error;
+
+		wheel_r.old_speed_r = wheel_r.speed_r;
+		wheel_l.old_speed_l = wheel_l.speed_l;
+
+		wheel_r.ir_encoder_errorsum += wheel_r.ir_encoder_error * 0.003;
+		wheel_l.il_encoder_errorsum += wheel_l.il_encoder_error * 0.003;
+
+		wheel_r.speed_r = (int32_t)(wheel_r.ir_encoder_error * encoder_Kp
+				+ wheel_r.ir_encoder_error_change*encoder_Kd/0.003
+				+ wheel_r.ir_encoder_errorsum * encoder_Ki);
+		wheel_l.speed_l = (int32_t)(wheel_l.il_encoder_error * encoder_Kp
+				+ wheel_l.il_encoder_error_change*encoder_Kd/0.003
+				+ wheel_l.il_encoder_errorsum * encoder_Ki);
+		if(wheel_l.speed_l > 1000 && common.sign ==1){
+			wheel_l.speed_l = 1000;
+		}
+		else if(wheel_l.speed_l < 0 && common.sign ==1){
+			wheel_l.speed_l = 0;
+		}
+		else if(wheel_l.speed_l > 0 && common.sign ==0){
+			wheel_l.speed_l = 0;
+		}
+		else if(wheel_l.speed_l < -1000 && common.sign ==0){
+			wheel_l.speed_l = -1000;
+		}
+
+
+		if(wheel_r.speed_r > 1000 && common.sign ==1){
+			wheel_r.speed_r = 1000;
+		}
+		else if(wheel_r.speed_r < 0 && common.sign ==1){
+			wheel_r.speed_r = 0;
+		}
+		else if(wheel_r.speed_r > 0 && common.sign ==0){
+			wheel_r.speed_r = 0;
+		}
+		else if(wheel_r.speed_r < -1000 && common.sign ==0){
+			wheel_r.speed_r = -1000;
+		}
+
+		//		wheel_r.speed_r = common.old_ratio * wheel_r.old_speed_r + (1 - common.old_ratio) * wheel_r.speed_r;
+		//		wheel_l.speed_l = common.old_ratio * wheel_l.old_speed_l + (1 - common.old_ratio) * wheel_l.speed_l;
+
+		wheel_r.motor_r.SetPower(abs(wheel_r.speed_r));
+		wheel_l.motor_l.SetPower(abs(wheel_l.speed_l));
+
+
+	}
+}
 
 void myListener(const Byte *bytes, const size_t size)
 {
@@ -256,7 +396,7 @@ int main()
 	Timer::TimerInt pt = t;
 	pt = System::Time();
 
-/*
+	/*
 
 	//Initalize the BT module
 
@@ -287,7 +427,7 @@ int main()
 	//	accel_config.sda_pin = Pin::Name::kPtb1;
 	//	Mma8451q myAccel(accel_config);
 
-*/
+	 */
 
 	Mpu6050::Config gyro_config;
 	//sensitivity of gyro
@@ -455,145 +595,6 @@ int main()
 
 
 
-void Balance_function(Wheel_l &wheel_l, Wheel_r &wheel_r, float original_angle, int &last_ideal_count, Gyro_Accel &gyro_accel, Kalman kalman)
-{
-	wheel_r.encoder_r.Update();
-	wheel_l.encoder_l.Update();
 
-	gyro_accel.mpu6050.Update();
-
-	std::array<float, 3>accel;
-	std::array<float, 3>omega;
-
-	accel = gyro_accel.mpu6050.GetAccel();
-	omega = gyro_accel.mpu6050.GetOmega();
-
-	gyro_accel.last_accel_angle = gyro_accel.accel_angle;
-	gyro_accel.accel_angle = accel[0]*57.29578;
-	gyro_accel.accel_angle = 0.65*gyro_accel.last_accel_angle +0.35*gyro_accel.accel_angle;
-
-	gyro_accel.last_gyro_angle = gyro_accel.gyro_angle;
-	gyro_accel.gyro_angle += (-1) *omega[1]*0.005 + 0.01*(gyro_accel.accel_angle - gyro_accel.gyro_angle);
-	//			gyro_angle = accel_angle+(-1) *omega[0];
-	//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
-
-
-	kalman.Filtering(&gyro_accel.output_angle, gyro_accel.gyro_angle, gyro_accel.accel_angle);
-
-	//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
-	//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
-	//	gyro_accel.output_angle = gyro_accel.trust_gyro*gyro_accel.gyro_angle +gyro_accel.trust_accel * gyro_accel.accel_angle;
-
-
-
-
-	gyro_accel.last_angle_error = gyro_accel.now_angle_error;
-	gyro_accel.now_angle_error = gyro_accel.output_angle - original_angle;
-	gyro_accel.angle_error_change = gyro_accel.now_angle_error - gyro_accel.last_angle_error;
-
-	last_ideal_count = ideal_count;
-	int temp_sign = 1;
-	if (gyro_accel.now_angle_error < 0)
-		temp_sign = -1;
-	ideal_count = (int32_t)(ic_Kp * temp_sign * gyro_accel.now_angle_error + ic_Kd * gyro_accel.angle_error_change);
-
-	ideal_count = (int32_t)(0.5 * last_ideal_count + 0.5 * ideal_count);
-}
-
-
-
-
-
-void Follow_Encoder (Wheel_l &wheel_l, Wheel_r &wheel_r, Common_Para &common)
-{
-	wheel_r.encoder_r.Update();
-	wheel_l.encoder_l.Update();
-
-	wheel_r.count_r = -1 * wheel_r.encoder_r.GetCount() / 3;
-	wheel_l.count_l = wheel_l.encoder_l.GetCount() / 3;
-
-	common.last_sign = common.sign;
-	if(ideal_count > 0){
-		common.sign = 1;
-	}
-	else if(ideal_count < 0){
-		common.sign = 0;
-	}
-	else if(ideal_count ==0){
-		common.sign = 2;
-	}
-
-
-	if(common.sign == 2){
-		wheel_l.motor_l.SetPower(0);
-		wheel_r.motor_r.SetPower(0);
-	}
-
-	else{
-
-		if(common.last_sign != common.sign){
-			wheel_l.motor_l.SetPower(0);
-			wheel_r.motor_r.SetPower(0);
-			wheel_l.motor_l.SetClockwise(common.sign);
-			wheel_r.motor_r.SetClockwise(common.sign);
-		}
-
-		wheel_r.last_ir_encoder_error = wheel_r.ir_encoder_error;
-		wheel_r.ir_encoder_error = ideal_count - wheel_r.count_r;
-		wheel_l.last_il_encoder_error = wheel_l.il_encoder_error;
-		wheel_l.il_encoder_error = ideal_count - wheel_l.count_l;
-
-
-		wheel_l.il_encoder_error_change = wheel_l.il_encoder_error -wheel_l.last_il_encoder_error;
-		wheel_r.ir_encoder_error_change = wheel_r.ir_encoder_error -wheel_r.last_ir_encoder_error;
-
-		wheel_r.old_speed_r = wheel_r.speed_r;
-		wheel_l.old_speed_l = wheel_l.speed_l;
-
-		wheel_r.ir_encoder_errorsum += wheel_r.ir_encoder_error * 0.003;
-		wheel_l.il_encoder_errorsum += wheel_l.il_encoder_error * 0.003;
-
-		wheel_r.speed_r = (int32_t)(wheel_r.ir_encoder_error * encoder_Kp
-				+ wheel_r.ir_encoder_error_change*encoder_Kd/0.003
-				+ wheel_r.ir_encoder_errorsum * encoder_Ki);
-		wheel_l.speed_l = (int32_t)(wheel_l.il_encoder_error * encoder_Kp
-				+ wheel_l.il_encoder_error_change*encoder_Kd/0.003
-				+ wheel_l.il_encoder_errorsum * encoder_Ki);
-		if(wheel_l.speed_l > 1000 && common.sign ==1){
-			wheel_l.speed_l = 1000;
-		}
-		else if(wheel_l.speed_l < 0 && common.sign ==1){
-			wheel_l.speed_l = 0;
-		}
-		else if(wheel_l.speed_l > 0 && common.sign ==0){
-			wheel_l.speed_l = 0;
-		}
-		else if(wheel_l.speed_l < -1000 && common.sign ==0){
-			wheel_l.speed_l = -1000;
-		}
-
-
-		if(wheel_r.speed_r > 1000 && common.sign ==1){
-			wheel_r.speed_r = 1000;
-		}
-		else if(wheel_r.speed_r < 0 && common.sign ==1){
-			wheel_r.speed_r = 0;
-		}
-		else if(wheel_r.speed_r > 0 && common.sign ==0){
-			wheel_r.speed_r = 0;
-		}
-		else if(wheel_r.speed_r < -1000 && common.sign ==0){
-			wheel_r.speed_r = -1000;
-		}
-
-		//		wheel_r.speed_r = common.old_ratio * wheel_r.old_speed_r + (1 - common.old_ratio) * wheel_r.speed_r;
-		//		wheel_l.speed_l = common.old_ratio * wheel_l.old_speed_l + (1 - common.old_ratio) * wheel_l.speed_l;
-
-		wheel_r.motor_r.SetPower(abs(wheel_r.speed_r));
-		wheel_l.motor_l.SetPower(abs(wheel_l.speed_l));
-
-
-	}
-}
 
 
