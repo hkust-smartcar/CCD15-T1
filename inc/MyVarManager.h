@@ -1,5 +1,5 @@
 /*
- * VarManager.h
+ * MyVarManager.h
  *
  * Author: PeterLau
  * Version: 2.8.0
@@ -8,24 +8,25 @@
  * Refer to LICENSE for details
  */
 
-#ifndef INC_VARMANAGER_H_
+#pragma once
 
 // TODO: enable following preprocessor command
 //#ifdef LIBSC_USE_UART
-#define INC_VARMANAGER_H_
 
-#include <libsc/k60/system.h>
-#include <libsc/k60/ftdi_ft232r.h>
-#include <libbase/k60/sys_tick.h>
-#include <libsc/k60/jy_mcu_bt_106.h>
 #include <typeinfo>
 #include <string.h>
 #include <cxxabi.h>
 
+#include <libsc/system.h>
+#include <libbase/k60/sys_tick.h>
+#include <libsc/k60/ftdi_ft232r.h>
+#include <libsc/k60/jy_mcu_bt_106.h>
+
+using namespace libsc;
 using namespace libsc::k60;
 using namespace libbase::k60;
 
-class VarManager
+class MyVarManager
 {
 public:
 
@@ -74,11 +75,13 @@ public:
 		static TypeId *m_instance;
 	};
 
-	explicit VarManager(void);
-	~VarManager(void);
+	typedef std::function<void(const std::vector<Byte>&)> OnReceiveListener;
+
+	explicit MyVarManager(void);
+	~MyVarManager(void);
 
 	void Init(void);
-	void Init(const JyMcuBt106::OnReceiveListener &oriListener);
+	void Init(const OnReceiveListener &oriListener);
 	void UnInit(void);
 
 	template<typename ObjType>
@@ -107,7 +110,7 @@ private:
 
 	JyMcuBt106						m_uart;
 
-	JyMcuBt106::OnReceiveListener	m_origin_listener;
+	OnReceiveListener	m_origin_listener;
 
 	std::vector<ObjMng>				sharedObjMng;
 	std::vector<ObjMng>				watchedObjMng;
@@ -117,7 +120,7 @@ private:
 
 	std::vector<Byte>				rx_buffer;
 
-	static void listener(const Byte *bytes, const size_t size);
+	static bool listener(const std::vector<Byte> &bytes);
 
 	SysTick::Config getTimerConfig(void);
 	JyMcuBt106::Config get106UartConfig(const uint8_t id);
@@ -129,4 +132,3 @@ private:
 };
 
 //#endif /* LIBSC_USE_UART */
-#endif /* INC_VARMANAGER_H_ */

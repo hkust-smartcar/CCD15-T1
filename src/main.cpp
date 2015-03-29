@@ -5,30 +5,31 @@
  *      Author: lincoln
  */
 
-
+#include <vector>
 #include <libbase/k60/mcg.h>
-#include <libsc/k60/led.h>
-#include <libsc/k60/system.h>
+#include <libsc/led.h>
+#include <libsc/system.h>
 #include <libsc/k60/ftdi_ft232r.h>
-#include <libsc/k60/alternate_motor.h>
-#include <libsc/k60/tower_pro_mg995.h>
-#include <libsc/k60/mpu6050.h>
-#include <libsc/k60/encoder.h>
-#include <libsc/k60/dir_motor.h>
-#include <libsc/k60/mma8451q.h>
+#include <libsc/alternate_motor.h>
+#include <libsc/tower_pro_mg995.h>
+#include <libsc/mpu6050.h>
+#include <libsc/encoder.h>
+#include <libsc/dir_motor.h>
+#include <libsc/mma8451q.h>
 #include <libsc/device_h/mma8451q.h>
 #include <cstdio>
-#include <libsc/k60/linear_ccd.h>
-#include "libsc/k60/st7735r.h"
-#include <libsc/k60/lcd_console.h>
-#include <libsc/k60/lcd_typewriter.h>
+#include <libsc/tsl1401cl.h>
+#include "libsc/st7735r.h"
+#include <libsc/lcd_console.h>
+#include <libsc/lcd_typewriter.h>
 #include <libbase/k60/adc.h>
-#include <libsc/k60/joystick.h>
-#include <libsc/k60/dir_encoder.h>
+#include <libsc/joystick.h>
+#include <libsc/dir_encoder.h>
 #include <libutil/string.h>
 #include <libutil/kalman_filter.h>
 
-#include "VarManager.h"
+#include "libsc/k60/jy_mcu_bt_106.h"
+#include "MyVarManager.h"
 
 #define BLACK           0x0000
 #define BLUE            0x001F
@@ -38,8 +39,14 @@
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0
 #define WHITE           0xFFFF
+#define aabbss(v) ((v > 0)? v : -v)
+#define white_black     0
+#define black_white     1
+#define half_black       2
+#define half_white       3
 
 char CCD;
+using namespace libsc;
 using namespace libsc::k60;
 
 namespace libbase
@@ -78,18 +85,27 @@ void ReceiveListener(const Byte *bytes, const size_t size)
 float ideal_count_Kd = 0;
 float ideal_count_Kp = 0;
 float error_kd = 0;
-float ic_Kd = 0;
+float ic_Kd = 6.85;
 float ic_Kp = 0;
+float ic_Kp_const = 5.9;
 float ic_Ki = 0;
+float mg = 0;
+
 float gyro_Ki = 0;
 //float encoder_Kp = 204;
 //float encoder_Kd = 81;
-float encoder_r_Kp = 0;
-float encoder_r_Kd = 0;
+float encoder_r_Kp = 2.1;
+float encoder_r_Kd = 9.82;
 float encoder_r_Ki = 0;
-float encoder_l_Kp = 0;
-float encoder_l_Kd = 0;
+float encoder_l_Kp = 1.017;
+float encoder_l_Kd = 4.22;
 float encoder_l_Ki = 0;
+
+float turning_Kp = 0;
+float turning_Kd = 0;
+float turning_Ki = 0;
+int32_t turning_count = 0;
+
 float original_angle = -12.24;
 float new_original_angle = 0;
 float turn[2] = { 1, 1 };
@@ -101,28 +117,54 @@ int32_t first_count = 0;
 float trust_accel = 0.016;
 float trust_old_accel = 0.83;
 float trust_new_accel = 1- trust_old_accel;
+Byte l_edge = 0;
+Byte r_edge = 0;
+Byte l_color_flag = 0;
+Byte r_color_flag = 0;
+float moving_gain = 0;
+
 
 
 //float howard =0;
 float lincoln1 = 0;
 
 int32_t ideal_count = 0;
-void myListener(const Byte *bytes, const size_t size)
+void myListener(const std::vector<Byte> &bytes)
 {
 	switch (bytes[0])
 	{
-	//	case 'j':
-	//		original_angle += 1;
-	//		break;
-	//	case 'k':
-	//		original_angle -= 1;
-	//		break;
-	//	case 'o':
-	//		original_angle = new_original_angle;
-	//		break;
-	//	case 'p':
-	//		new_original_angle = original_angle;
-	//		break;
+	case '3':
+		if(moving_gain >= 0.1){
+			moving_gain -= 0.1;
+		}
+		break;
+	case '4':
+		moving_gain += 0.1;
+		break;
+	case '#':
+		if(moving_gain >= 1){
+			moving_gain -= 1;
+		}
+		break;
+	case '$':
+		moving_gain += 1;
+		break;
+	case '1':
+		if(ideal_count >= 5){
+			ideal_count -= 5;
+		}
+		break;
+	case '2':
+		ideal_count += 5;
+		break;
+	case '!':
+		if(ideal_count >= 20){
+			ideal_count -= 20;
+		}
+		break;
+	case '@':
+		ideal_count += 20;
+		break;
 	case '8':
 		turn[0] = 0;
 		turn[1] = 1.3;
@@ -136,36 +178,36 @@ void myListener(const Byte *bytes, const size_t size)
 		turn[1] = 0;
 		break;
 	case 'z':
-		if(ic_Kp > 0.1){
-			ic_Kp -= 0.1;
+		if(turning_Kp > 0.1){
+			turning_Kp -= 0.1;
 		}
 		break;
 	case 'x':
-		ic_Kp += 0.1;
+		turning_Kp += 0.1;
 		break;
 	case 'Z':
-		if(ic_Kp > 1){
-			ic_Kp -= 1;
+		if(turning_Kp > 1){
+			turning_Kp -= 1;
 		}
 		break;
 	case 'X':
-		ic_Kp += 1;
+		turning_Kp += 1;
 		break;
 	case 'c':
-		if(ic_Kd > 0.05){
-			ic_Kd -= 0.05;
+		if(turning_Kd > 0.05){
+			turning_Kd -= 0.05;
 		}
 		break;
 	case 'v':
-		ic_Kd += 0.05;
+		turning_Kd += 0.05;
 		break;
 	case 'C':
-		if(ic_Kd > 0.1){
-			ic_Kd -= 0.1;
+		if(turning_Kd > 0.1){
+			turning_Kd -= 0.1;
 		}
 		break;
 	case 'V':
-		ic_Kd += 0.1;
+		turning_Kd += 0.1;
 		break;
 	case 'n':
 		if(ic_Ki > 0.01){
@@ -184,12 +226,12 @@ void myListener(const Byte *bytes, const size_t size)
 		ic_Ki += 0.1;
 		break;
 	case 'h':
-		if(encoder_l_Kp > 0.1){
-			encoder_l_Kp -= 0.1;
+		if(encoder_l_Kp > 0.001){
+			encoder_l_Kp -= 0.001;
 		}
 		break;
 	case 'j':
-		encoder_l_Kp += 0.1;
+		encoder_l_Kp += 0.001;
 		break;
 	case 'H':
 		if(encoder_l_Kp > 1){
@@ -208,12 +250,12 @@ void myListener(const Byte *bytes, const size_t size)
 		encoder_l_Kd += 0.01;
 		break;
 	case 'K':
-		if(encoder_l_Kd > 0.1){
-			encoder_l_Kd -= 0.1;
+		if(encoder_l_Kd > 1){
+			encoder_l_Kd -= 1;
 		}
 		break;
 	case 'L':
-		encoder_l_Kd += 0.1;
+		encoder_l_Kd += 1;
 		break;
 	case 'u':
 		if(encoder_r_Kp > 0.1){
@@ -266,9 +308,13 @@ int main()
 	char *words = new char[125]{0};
 	uint16_t pixel1[2100];
 	uint16_t pixel_bg_colour[2100];
+	uint16_t now_5pixel_value = 0;
+	uint16_t last_5pixel_value = 0;
+	float pixel_difference_sum = 0;
+	float pixel_avg_difference = 0;
 	uint32_t avg = 0;
 	uint32_t all = 0;
-	std::array<uint16_t,LinearCcd::kSensorW> pixel;
+	std::array<uint16_t,Tsl1401cl::kSensorW> pixel;
 	float window = 5.0;
 	float window_avg = 0;
 	int state = 0;
@@ -307,7 +353,7 @@ int main()
 
 
 
-	VarManager pGrapher;
+
 
 
 
@@ -332,11 +378,19 @@ int main()
 
 
 
-	//	FtdiFt232r::Config uart_config;
-	//	uart_config.id = 0;
+	//		FtdiFt232r::Config uart_config;
+	//		uart_config.id = 0;
+	//		uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
+	//		FtdiFt232r fu(uart_config);
+
+	//	JyMcuBt106::Config uart_config;
 	//	uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
-	//	FtdiFt232r fu(uart_config);
-	// Initialize other things as necessary...
+	//	uart_config.rx_irq_threshold = 7;
+	//	uart_config.is_rx_irq_threshold_percentage = false;
+	//	uart_config.tx_buf_size = 50;
+	//	JyMcuBt106 fu(uart_config);
+
+	//	 Initialize other things as necessary...
 
 
 	//
@@ -369,7 +423,15 @@ int main()
 	//	Mma8451q myAccel(accel_config);
 
 
-	LinearCcd ccd(0);
+	Tsl1401cl ccd(0);
+	Byte center_line = 0;
+	Byte center_line_flag = 0;
+	int16_t center_line_error = 0;
+	float last_center_line_error = 0;
+	float now_center_line_error = 0;
+	float center_line_error_change = 0;
+	float road_length = 0;
+	float center_line_errorsum = 0;
 
 	St7735r::Config config;
 	config.is_revert = false;
@@ -381,10 +443,19 @@ int main()
 	yoyo.lcd = &lcd;
 	LcdConsole console(yoyo);
 
+	LcdTypewriter::Config typeconfig;
+	typeconfig.lcd = &lcd;
+	typeconfig.bg_color = 0;
+	typeconfig.text_color = -1;
+	typeconfig.is_text_wrap = true;
+	LcdTypewriter type(typeconfig);
 
-	Gpo::Config howard;
-	howard.pin = Pin::Name::kPtc9;
-	Gpo lincoln(howard);
+
+
+
+	//	Gpo::Config howard;
+	//	howard.pin = Pin::Name::kPtc9;
+	//	Gpo lincoln(howard);
 
 
 	Joystick::Config joycon;
@@ -408,12 +479,7 @@ int main()
 	r_encoder.id = 1;
 	DirEncoder encoder_r(r_encoder);
 
-	LcdTypewriter::Config typeconfig;
-	typeconfig.lcd = &lcd;
-	typeconfig.bg_color = 0;
-	typeconfig.text_color = -1;
-	typeconfig.is_text_wrap = true;
-	LcdTypewriter type(typeconfig);
+
 
 
 
@@ -445,7 +511,8 @@ int main()
 
 		}
 	}
-	original_angle = raw_angle;
+	//	original_angle = raw_angle;
+	original_angle = -5.01;
 
 	float accel_angle = original_angle;
 	float last_gyro_angle = original_angle;
@@ -476,12 +543,13 @@ int main()
 	int32_t speed_l = 0;                    //last output to motor left,0-1000
 	int32_t speed_r = 0;                    //last output to motor right,0-1000
 
-
+	uint32_t pt0 = 0;
 	uint32_t pt1 = 0;
 	uint32_t pt2 = 0;
 	uint32_t pt3 = 0;
 	uint32_t pt4 = 0;
 	uint32_t pt5 = 0;
+	uint32_t pt6 = 0;
 
 
 	int square_sign = 0;      //for the disappearance of -sign in power two fucntion
@@ -505,21 +573,24 @@ int main()
 	Byte yo = 0;                      //to organize the sequence of code
 	int32_t total_error_ir = 0;       //Pi
 	int32_t total_error_il = 0;       //Pi
+
 	//********************************************************************************************************************
+	MyVarManager pGrapher;
 	//graph testing variable
 
 	//	pGrapher.addWatchedVar(&ir_Kp, "float", sizeof(float), "1");
 	//		pGrapher.addWatchedVar(&ir_Kd, "2");
 	//		pGrapher.addWatchedVar(&il_Kp, "3");
 	pGrapher.addWatchedVar(&ideal_count, "1");
-	pGrapher.addWatchedVar(&ic_Kp, "2");
-	pGrapher.addWatchedVar(&ic_Kd, "3");
-	pGrapher.addWatchedVar(&encoder_r_Kp, "4");
-	pGrapher.addWatchedVar(&encoder_r_Kd, "5");
+	pGrapher.addWatchedVar(&turning_Kp, "2");
+	pGrapher.addWatchedVar(&turning_Kd, "3");
+	//	pGrapher.addWatchedVar(&ic_Ki, "4");
+	//	pGrapher.addWatchedVar(&encoder_r_Kd, "5");
 	//	pGrapher.addWatchedVar(&ir_encoder_errorsum, "6");
-	pGrapher.addWatchedVar(&output_angle, "6");
-	pGrapher.addWatchedVar(&count_l, "7");
-	pGrapher.addWatchedVar(&count_r, "8");
+	pGrapher.addWatchedVar(&output_angle, "4");
+	pGrapher.addWatchedVar(&count_l, "5");
+	pGrapher.addWatchedVar(&count_r, "6");
+	pGrapher.addWatchedVar(&moving_gain, "7");
 
 	//	pGrapher.addWatchedVar(&speed_l, "5");
 
@@ -541,18 +612,22 @@ int main()
 
 
 
+		//					lincoln.Turn();
 
 
 		if(t !=System::Time()){
 			t = System::Time();
-			if(t - pt1 <0 ||t - pt2 < 0 ||t- pt3 < 0){
-				pt1 = 0;
-				pt2 = 0;
-				pt3 = 0;
-			}
+			//			if(t - pt1 <0 ||t - pt2 < 0 ||t- pt3 < 0){
+			//				pt1 = 0;
+			//				pt2 = 0;
+			//				pt3 = 0;
+			//			}
 
 
-
+			//			if((int32_t)(t-pt0) >=50){
+			//				pt0 = t;
+			//
+			//			}
 
 			if((int32_t)(t-pt1) >= 11  && yo==0){
 				//
@@ -564,6 +639,9 @@ int main()
 
 				encoder_r.Update();
 				encoder_l.Update();
+
+
+
 
 				mpu6050.Update();
 
@@ -610,6 +688,10 @@ int main()
 				else if(now_angle_error < 0){
 					square_sign = -1;
 				}
+
+
+
+				ic_Kp = moving_gain*aabbss(output_angle)/20 + ic_Kp_const;
 				ideal_count = (int32_t)(ic_Kp*(now_angle_error)+ ic_Kd*angle_error_change);
 				//			ideal_count = 3.1*(now_error)+ 0.9 * angle_error_change;
 
@@ -620,9 +702,7 @@ int main()
 				//					last_sign = 0;
 				//				}
 
-				ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
-
-
+				ideal_count = (int32_t)(0.1*last_ideal_count + 0.9*ideal_count);
 
 
 
@@ -631,110 +711,6 @@ int main()
 			}
 
 
-
-
-
-
-			//				lincoln.Set(0);
-			//					if(output_angle -original_angle< 0){
-			//						sign = -1;
-			//					}
-			//					else{
-			//						sign = 1;
-			//					}
-
-
-			//			}
-
-
-
-
-
-
-
-
-			//			if(t%15 ==0){
-			//				lincoln.Turn();
-			//
-			//				ccd.StartSample();
-			//				while (!ccd.SampleProcess())
-			//				{}
-			//				pixel = ccd.GetData();
-			//
-			//				for(int i = 0; i<LinearCcd::kSensorW; i++){
-			//					all += pixel[i];
-			//				}
-			//				avg = (all / LinearCcd::kSensorW);
-			//				all = 0;
-			//
-			//				for(int i=0;i<LinearCcd::kSensorW; i++){
-			//					if(pixel[i] <avg){
-			//						pixel[i] = 0;
-			//					}
-			//					else if(pixel[i]>=avg){
-			//						pixel[i] = 1;
-			//					}
-			//				}
-			//
-			//				for(int i=0;i<LinearCcd::kSensorW-4; i++){
-			//					window_avg = (pixel[i]+pixel[i+1]+pixel[i+2]+pixel[i+3]+pixel[i+4])/window;
-			//					if(1-window_avg < window_avg){
-			//						pixel[i+2] = 1;
-			//					}
-			//					else if(1-window_avg > window_avg){
-			//						pixel[i+2] = 0;
-			//					}
-			//
-			//				}
-			//
-			//
-			//
-			//
-			//
-			//			}
-
-
-
-
-
-
-
-			//			//					error_count = ideal_count - count_r;
-			//			//					last_error_count = now_error_count;
-			//			//					now_error_count = error_count;
-			//			//					error_count_change = now_error_count - last_error_count;
-			//			//
-			//
-			//			//					while(now_error >30 ||now_error < -30){
-			//			//						motor_l.SetPower(0);
-			//			//						motor_r.SetPower(0);
-			//			//					}
-			//			//
-			//			//					if(ideal_count > 1){
-			//			//						motor_l.SetClockwise(1);
-			//			//						motor_r.SetClockwise(1);
-			//			//
-			//			//						motor_speed += 1*(error_count) + 1*error_count_change;
-			//			//						motor_l.SetPower(abs(motor_speed)+50);
-			//			//						motor_r.SetPower(abs(motor_speed)+50);
-			//			//					}
-			//			//					else if(ideal_count <=1 &&ideal_count >=-1){
-			//			//
-			//			//						motor_l.SetPower(0);
-			//			//						motor_r.SetPower(0);
-			//			//					}
-			//			//					else if(ideal_count < -1){
-			//			//						motor_l.SetClockwise(0);
-			//			//						motor_r.SetClockwise(0);
-			//			//						motor_speed += 1*(error_count) + 0.1*error_count_change;
-			//			//						motor_l.SetPower(abs(motor_speed)+50);
-			//			//						motor_r.SetPower(abs(motor_speed)+50);
-			//			//
-			//			//					}
-			//
-			//
-			//
-			//
 
 
 
@@ -786,9 +762,9 @@ int main()
 					}
 
 					last_ir_encoder_error = ir_encoder_error;
-					ir_encoder_error = ideal_count - count_r;
-					last_il_encoder_error = il_encoder_error;
-					il_encoder_error = ideal_count - count_l;
+					ir_encoder_error = ideal_count - turning_count - count_r;        //turning_count is positive when car needs to turn right
+					last_il_encoder_error = il_encoder_error;                        //left wheel faster right wheel slower
+					il_encoder_error = ideal_count + turning_count - count_l;        //turning_count is positive when car needs to turn right
 
 
 					il_encoder_error_change = il_encoder_error -last_il_encoder_error;
@@ -803,8 +779,13 @@ int main()
 
 					lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
 
-					speed_r = (int32_t)(ir_encoder_error *encoder_r_Kp + (float)(ir_encoder_error_change * encoder_r_Kd/3) + ir_encoder_errorsum*encoder_r_Ki*0.003);
-					speed_l = (int32_t)(il_encoder_error *encoder_l_Kp + (float)(il_encoder_error_change * encoder_l_Kd/3) + il_encoder_errorsum*encoder_l_Ki*0.003);
+
+					//					if((il_encoder_error_change+ir_encoder_error_change)/2 >= 15){
+					//						speed_l = 2.4988*ideal_count + 31.4593;                           //data from graph,reference power
+					//						speed_r = 2.38436*ideal_count + 41.1278;
+					//					}
+					speed_r += (int32_t)((int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
+					speed_l += (int32_t)((int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
 					if(speed_l > 1000 && sign ==1){
 						speed_l = 1000;
 					}
@@ -842,15 +823,16 @@ int main()
 					speed_l = speed_l*turn[0];
 
 
-					motor_l.SetPower(abs(speed_l)+107);
-					motor_r.SetPower(abs(speed_r)+113);
+
+					motor_l.SetPower(abs(2.4988*speed_l + 31.4593));
+					motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
 
 
 				}
 
 
-			}
 
+			}
 
 			/*second round to get angle and encoder
 			 *
@@ -915,6 +897,7 @@ int main()
 				else if(now_angle_error < 0){
 					square_sign = -1;
 				}
+				ic_Kp = moving_gain*aabbss(output_angle)/20 + ic_Kp_const;
 				ideal_count = (int32_t)(ic_Kp*(now_angle_error)+ ic_Kd*angle_error_change);
 				//			ideal_count = 3.1*(now_error)+ 0.9 * angle_error_change;
 
@@ -925,7 +908,8 @@ int main()
 				//					last_sign = 0;
 				//				}
 
-				ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
+
+				ideal_count = (int32_t)(0.1*last_ideal_count + 0.9*ideal_count);
 
 
 
@@ -977,9 +961,9 @@ int main()
 					}
 
 					last_ir_encoder_error = ir_encoder_error;
-					ir_encoder_error = ideal_count - count_r;
-					last_il_encoder_error = il_encoder_error;
-					il_encoder_error = ideal_count - count_l;
+					ir_encoder_error = ideal_count - turning_count - count_r;        //turning_count is positive when car needs to turn right
+					last_il_encoder_error = il_encoder_error;                        //left wheel faster right wheel slower
+					il_encoder_error = ideal_count + turning_count - count_l;        //turning_count is positive when car needs to turn right
 
 
 					il_encoder_error_change = il_encoder_error -last_il_encoder_error;
@@ -992,10 +976,11 @@ int main()
 					il_encoder_errorsum -= il_encoder_error;
 
 
-					lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
+					//						lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
 
-					speed_r = (int32_t)(ir_encoder_error *encoder_r_Kp + (float)(ir_encoder_error_change * encoder_r_Kd/3) + ir_encoder_errorsum*encoder_r_Ki*0.003);
-					speed_l = (int32_t)(il_encoder_error *encoder_l_Kp + (float)(il_encoder_error_change * encoder_l_Kd/3) + il_encoder_errorsum*encoder_l_Ki*0.003);
+
+					speed_r += (int32_t)((int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
+					speed_l += (int32_t)((int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
 					if(speed_l > 1000 && sign ==1){
 						speed_l = 1000;
 					}
@@ -1033,30 +1018,173 @@ int main()
 					speed_l = speed_l*turn[0];
 
 
-					motor_l.SetPower(abs(speed_l)+107);
-					motor_r.SetPower(abs(speed_r)+113);
+
+
+
+					motor_l.SetPower(abs(2.4988*speed_l + 31.4593));                        //data from graph, encoder--->power mapping
+					motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
 
 
 				}
 
 
+
+
 			}
 
 
 
 
 
-
-
-			if((int32_t)(t-pt4) >= 2 && yo ==4){
+			if((int32_t)(t-pt4) >= 2 && yo == 4){
 				pt5 = System::Time();
-				yo =0;
+				yo = 0;
 				pGrapher.sendWatchData();
+				//				int n = sprintf(buffer, "%d , %d\n",power, count_r);
+				//				fu.SendBuffer((Byte*)buffer,n);
+				//				memset(buffer, 0, n);
 
 			}
 
-
-
+			//detect edge method***************
+//			if((int32_t)(t-pt6) >= 50 && yo == 5){
+//				pt6 = System::Time();
+//				yo = 0;
+//
+//				libsc::St7735r::Rect rect_;
+//				ccd.StartSample();
+//				while (!ccd.SampleProcess())
+//				{}
+//				pixel = ccd.GetData();
+//
+//				now_5pixel_value = pixel[57] + pixel[58] + pixel[59] + pixel[60] + pixel[61];
+//				for(int i=62; i < 118; i = i+5){
+//					last_5pixel_value = now_5pixel_value;
+//					now_5pixel_value = pixel[i] + pixel[i+1] + pixel[i+2] + pixel[i+3] + pixel[i+4];
+//					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
+//
+//					if(i == 62){
+//						pixel_avg_difference = pixel_difference_sum/((i-57)/5);
+//						if(pixel_difference_sum >= 1500){
+//							pixel_avg_difference = 1;
+//						}
+//
+//					}
+//
+//					if(pixel_avg_difference >= 10){
+//						pixel_avg_difference = 1;
+//					}
+//					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
+//						r_edge = i;
+//						r_color_flag = white_black;
+//						pixel_difference_sum = 0;
+//						break;
+//					}
+//
+//
+//					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
+//						r_edge = i;
+//						r_color_flag = black_white;
+//						pixel_difference_sum = 0;
+//						break;
+//					}
+//					else if(i == 117){
+//						if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 > 60000){
+//							r_color_flag = half_white;
+//							pixel_difference_sum = 0;
+//							break;
+//						}
+//						else if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 < 35000){
+//							r_color_flag = half_black;
+//							pixel_difference_sum = 0;
+//							break;
+//						}
+//					}
+//					pixel_avg_difference = pixel_difference_sum/((i-57)/5);
+//				}
+//
+//				now_5pixel_value = pixel[65] + pixel[66] + pixel[67] + pixel[68] + pixel[69];
+//				for(int i = 69; i > 8; i = i-5){
+//					last_5pixel_value = now_5pixel_value;
+//					now_5pixel_value = pixel[i] + pixel[i-1] + pixel[i-2] + pixel[i-3] + pixel[i-4];
+//					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
+//
+//					if(i == 69){
+//						pixel_avg_difference = pixel_difference_sum/((74-i)/5);
+//						if(pixel_difference_sum >= 1500){
+//							pixel_avg_difference = 1;
+//						}
+//					}
+//					if(pixel_avg_difference >= 10){
+//						pixel_avg_difference = 1;
+//					}
+//
+//					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
+//						l_edge = i;
+//						l_color_flag = white_black;
+//						pixel_difference_sum = 0;
+//						break;
+//					}
+//
+//
+//					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
+//						l_edge = i;
+//						l_color_flag = black_white;
+//						pixel_difference_sum = 0;
+//						break;
+//					}
+//					else if(i == 9){
+//
+//						if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 > 60000){
+//							l_color_flag = half_white;
+//							pixel_difference_sum = 0;
+//							break;
+//						}
+//						else if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 < 35000){
+//							l_color_flag = half_black;
+//							pixel_difference_sum = 0;
+//							break;
+//						}
+//						break;
+//					}
+//					pixel_avg_difference = pixel_difference_sum/((74 - i)/5);
+//				}
+//
+//				if(center_line_flag == 0){
+//					road_length = r_edge - l_edge;
+//					center_line = (road_length)/2+l_edge;
+//					center_line_flag++;
+//				}
+//
+//				last_center_line_error = now_center_line_error;
+//				now_center_line_error = center_line - ((r_edge - l_edge)/2+l_edge);         //if the error is positive, car need to turn right
+//				center_line_error_change = now_center_line_error - last_center_line_error;
+//				center_line_errorsum += now_center_line_error;
+//				if(center_line_errorsum > 1000){
+//					center_line_errorsum = 1000;
+//				}
+//				else if(center_line_errorsum < -1000){
+//					center_line_errorsum = -1000;
+//				}
+//
+//
+//				turning_count += (int32_t)(now_center_line_error*turning_Kp + center_line_error_change*turning_Kd + center_line_errorsum*turning_Ki);
+//
+//
+//
+//
+//
+//
+//				//
+//				//				if(now_center_line_error >=0){
+//				//					turn[0] = ccd_Kp*now_center_line_error + ccd_Kd*center_line_error_change;
+//				//					turn[1] =
+//				//				}
+//				//
+//			}
+//			else if(yo == 5){
+//				yo = 0;
+//			}
 
 		}
 	}

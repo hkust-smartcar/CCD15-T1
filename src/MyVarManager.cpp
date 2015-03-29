@@ -1,5 +1,5 @@
 /*
- * VarManager.cpp
+ * MyVarManager.cpp
  *
  * Author: PeterLau
  * Version: 2.8.0
@@ -8,34 +8,41 @@
  * Refer to LICENSE for details
  */
 
-#include "VarManager.h"
-
 #include <cstdlib>
 #include <functional>
 #include <utility>
+
+
+#include <libsc/system.h>
+#include <libbase/k60/sys_tick.h>
+#include <libsc/k60/jy_mcu_bt_106.h>
+
+#include "MyVarManager.h"
 
 // TODO: enable following preprocessor command
 //#ifdef LIBSC_USE_UART
 
 using namespace libbase::k60;
+using namespace libsc;
 using namespace libsc::k60;
 using namespace std;
 
-VarManager *m_pd_instance;
+MyVarManager *m_pd_instance;
 
-VarManager::TypeId *VarManager::TypeId::m_instance = nullptr;
+MyVarManager::TypeId *MyVarManager::TypeId::m_instance = nullptr;
 
-JyMcuBt106::Config VarManager::get106UartConfig(const uint8_t id)
+JyMcuBt106::Config MyVarManager::get106UartConfig(const uint8_t id)
 {
 	JyMcuBt106::Config config;
 	config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
 	config.rx_irq_threshold = rx_threshold;
 	config.is_rx_irq_threshold_percentage = false;
 	config.tx_buf_size = 50;
+	config.rx_isr = &listener;
 	return config;
 }
 
-FtdiFt232r::Config VarManager::get232UartConfig(const uint8_t id)
+FtdiFt232r::Config MyVarManager::get232UartConfig(const uint8_t id)
 {
 	FtdiFt232r::Config config;
 	config.id = id;
@@ -46,7 +53,7 @@ FtdiFt232r::Config VarManager::get232UartConfig(const uint8_t id)
 	return config;
 }
 
-VarManager::VarManager(void)
+MyVarManager::MyVarManager(void)
 :
 	rx_threshold(7),
 	m_uart(get106UartConfig(0)),
@@ -57,18 +64,18 @@ VarManager::VarManager(void)
 	TypeId::Init();
 }
 
-VarManager::~VarManager()
+MyVarManager::~MyVarManager()
 {
 	sharedObjMng.clear();
 	watchedObjMng.clear();
 }
 
-void VarManager::listener(const Byte *bytes, const size_t size)
+bool MyVarManager::listener(const std::vector<Byte> &bytes)
 {
-	m_pd_instance->rx_buffer.insert(m_pd_instance->rx_buffer.end(), bytes, bytes + size);
+	m_pd_instance->rx_buffer.insert(m_pd_instance->rx_buffer.end(), bytes.begin(), bytes.end());
 
 	if (m_pd_instance->rx_buffer.size() < m_pd_instance->rx_threshold)
-		return ;
+		return true;
 
 	if (m_pd_instance->rx_buffer.size() == m_pd_instance->rx_threshold)
 	{
@@ -98,20 +105,21 @@ void VarManager::listener(const Byte *bytes, const size_t size)
 			}
 		}
 		else
-			m_pd_instance->m_origin_listener(m_pd_instance->rx_buffer.data(), m_pd_instance->rx_buffer.size());
+			m_pd_instance->m_origin_listener(m_pd_instance->rx_buffer);
 	}
 
 	m_pd_instance->rx_buffer.clear();
+	return true;
 }
 
-void VarManager::sendWatchData(void)
+void MyVarManager::sendWatchData(void)
 {
 	if (isStarted)
 		for (Byte i = 0; i < watchedObjMng.size(); i++)
 			m_uart.SendBuffer((Byte *)((ObjMng)watchedObjMng.at(i)).obj, ((ObjMng)watchedObjMng.at(i)).len);
 }
 
-void VarManager::sendWatchedVarInfo(void)
+void MyVarManager::sendWatchedVarInfo(void)
 {
 	m_uart.SendBuffer((Byte *)",", 1);
 	Byte n = watchedObjMng.size();
@@ -126,7 +134,7 @@ void VarManager::sendWatchedVarInfo(void)
 	m_uart.SendBuffer((Byte *)"end", 3);
 }
 
-void VarManager::sendSharedVarInfo(void)
+void MyVarManager::sendSharedVarInfo(void)
 {
 	m_uart.SendBuffer((Byte *)".", 1);
 	Byte n = sharedObjMng.size();
@@ -142,29 +150,26 @@ void VarManager::sendSharedVarInfo(void)
 	m_uart.SendBuffer((Byte *)"end", 3);
 }
 
-void VarManager::Init(void)
+void MyVarManager::Init(void)
 {
 	if (!isStarted)
 	{
 		if (!m_origin_listener)
 			m_origin_listener = nullptr;
-		m_uart.EnableRx(&listener);
 	}
 }
 
-void VarManager::Init(const JyMcuBt106::OnReceiveListener &oriListener)
+void MyVarManager::Init(const OnReceiveListener &oriListener)
 {
 	if (!isStarted)
 	{
 		m_origin_listener = oriListener;
-		m_uart.EnableRx(&listener);
 	}
 }
 
-void VarManager::UnInit(void)
+void MyVarManager::UnInit(void)
 {
 	m_origin_listener = nullptr;
-	m_uart.DisableRx();
 }
 
 //#endif /* LIBSC_USE_UART */

@@ -12,14 +12,14 @@
 //
 //#include <bitset>
 //
-//#include <libsc/k60/system.h>
-//#include <libsc/k60/timer.h>
+//#include <libsc/system.h>
+//#include <libsc/timer.h>
 //#include <libutil/remote_var_manager.h>
 //#include <libutil/misc.h>
 //#include <libutil/string.h>
 //#include <carmenu.h>
 //
-//using namespace libsc::k60;
+//using namespace libsc;
 //using namespace libutil;
 //using namespace std;
 //
