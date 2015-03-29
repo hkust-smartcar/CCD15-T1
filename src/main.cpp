@@ -5,12 +5,6 @@
  *      Author: lincoln
  */
 
-/*
- * main.cpp
- *
- *  Created on: 26 Dec, 2014
- *      Author: lincoln
- */
 
 #include <libbase/k60/mcg.h>
 #include <libsc/k60/led.h>
@@ -84,19 +78,30 @@ void ReceiveListener(const Byte *bytes, const size_t size)
 float ideal_count_Kd = 0;
 float ideal_count_Kp = 0;
 float error_kd = 0;
-float ic_Kd = 0.68;
-float ic_Kp = 3.9;
+float ic_Kd = 0;
+float ic_Kp = 0;
+float ic_Ki = 0;
 float gyro_Ki = 0;
-float encoder_Kp = 100;
-float encoder_Kd = 0;
-float encoder_Ki = 0;
+//float encoder_Kp = 204;
+//float encoder_Kd = 81;
+float encoder_r_Kp = 0;
+float encoder_r_Kd = 0;
+float encoder_r_Ki = 0;
+float encoder_l_Kp = 0;
+float encoder_l_Kd = 0;
+float encoder_l_Ki = 0;
 float original_angle = -12.24;
 float new_original_angle = 0;
 float turn[2] = { 1, 1 };
 float still_Kp = 0;
 float still_Kd = 0;
-float ratio_old = 0.27;
+float ratio_old = 0;
 float ratio_new = 1-ratio_old;
+int32_t first_count = 0;
+float trust_accel = 0.016;
+float trust_old_accel = 0.83;
+float trust_new_accel = 1- trust_old_accel;
+
 
 //float howard =0;
 float lincoln1 = 0;
@@ -120,99 +125,130 @@ void myListener(const Byte *bytes, const size_t size)
 	//		break;
 	case '8':
 		turn[0] = 0;
-		turn[1] = 1.2;
+		turn[1] = 1.3;
 		break;
 	case '9':
 		turn[0] = 1;
 		turn[1] = 1;
 		break;
 	case '0':
-		turn[0] = 1.2;
+		turn[0] = 1.3;
 		turn[1] = 0;
 		break;
 	case 'z':
-		encoder_Kp += 1;
-		break;
-	case 'Z':
-
-		encoder_Kp += 20;
-
+		if(ic_Kp > 0.1){
+			ic_Kp -= 0.1;
+		}
 		break;
 	case 'x':
-		if(encoder_Kp >=1){
-			encoder_Kp -= 1;
+		ic_Kp += 0.1;
+		break;
+	case 'Z':
+		if(ic_Kp > 1){
+			ic_Kp -= 1;
 		}
 		break;
 	case 'X':
-		if(encoder_Kp >=20){
-			encoder_Kp -= 20;
-		}
+		ic_Kp += 1;
 		break;
 	case 'c':
-		encoder_Kd +=1;
-		break;
-	case 'C':
-		encoder_Kd += 20;
+		if(ic_Kd > 0.05){
+			ic_Kd -= 0.05;
+		}
 		break;
 	case 'v':
-		if(encoder_Kd >=1){
-			encoder_Kd -= 1;
+		ic_Kd += 0.05;
+		break;
+	case 'C':
+		if(ic_Kd > 0.1){
+			ic_Kd -= 0.1;
 		}
 		break;
 	case 'V':
-		if(encoder_Kd >= 20){
-			encoder_Kd -= 20;
-		}
+		ic_Kd += 0.1;
 		break;
 	case 'n':
-
-		encoder_Ki += 0.05;
+		if(ic_Ki > 0.01){
+			ic_Ki -= 0.01;
+		}
 		break;
 	case 'm':
-		if(encoder_Ki >=0.05)
-			encoder_Ki -= 0.05;
+		ic_Ki += 0.01;
 		break;
 	case 'N':
-
-		encoder_Ki += 20;
+		if(ic_Ki > 0.1){
+			ic_Ki -= 0.1;
+		}
 		break;
 	case 'M':
-		if(encoder_Ki >= 20)
-			encoder_Ki -= 20;
-		break;
-	case 'j':
-		ideal_count += 10;
-		break;
-	case 'k':
-		ideal_count -= 10;
-		break;
-		//	case 'N':
-		//		if(ratio_old <= 1 && ratio_old >=0)
-		//			ratio_old += 0.1;
-		//		break;
-		//	case 'M':
-		//		if(ratio_old >=0.1)
-		//			ratio_old -= 0.1;
-		//		break;
-		//	case 'a':
-		//		ideal_count += 5;
-		//		break;
-		//	case 's':
-		//		ideal_count -= 5;
-		//		break;
-		//	case 'A':
-		//		ideal_count += 80;
-		//		break;
-		//	case 'S':
-		//		ideal_count -= 80;
-		//		break;
-		//
-	case 'g':
-		ic_Kp -= 0.1;
+		ic_Ki += 0.1;
 		break;
 	case 'h':
-		ic_Kp += 0.1;
+		if(encoder_l_Kp > 0.1){
+			encoder_l_Kp -= 0.1;
+		}
 		break;
+	case 'j':
+		encoder_l_Kp += 0.1;
+		break;
+	case 'H':
+		if(encoder_l_Kp > 1){
+			encoder_l_Kp -= 1;
+		}
+		break;
+	case 'J':
+		encoder_l_Kp += 1;
+		break;
+	case 'k':
+		if(encoder_l_Kd > 0.01){
+			encoder_l_Kd -= 0.01;
+		}
+		break;
+	case 'l':
+		encoder_l_Kd += 0.01;
+		break;
+	case 'K':
+		if(encoder_l_Kd > 0.1){
+			encoder_l_Kd -= 0.1;
+		}
+		break;
+	case 'L':
+		encoder_l_Kd += 0.1;
+		break;
+	case 'u':
+		if(encoder_r_Kp > 0.1){
+			encoder_r_Kp -= 0.1;
+		}
+		break;
+	case 'i':
+		encoder_r_Kp += 0.1;
+		break;
+	case 'U':
+		if(encoder_r_Kp > 1){
+			encoder_r_Kp -= 1;
+		}
+		break;
+	case 'I':
+		encoder_r_Kp += 1;
+		break;
+	case 'o':
+		if(encoder_r_Kd > 0.01){
+			encoder_r_Kd -= 0.01;
+		}
+		break;
+	case 'p':
+		encoder_r_Kd += 0.01;
+		break;
+	case 'O':
+		if(encoder_r_Kd > 0.1){
+			encoder_r_Kd -= 0.1;
+		}
+		break;
+	case 'P':
+		encoder_r_Kd += 0.1;
+		break;
+
+
 
 	}
 }
@@ -357,11 +393,11 @@ int main()
 	Joystick joy(joycon);
 
 	AlternateMotor::Config l_motor;
-	l_motor.id = 0;
+	l_motor.id = 1;
 	AlternateMotor motor_r(l_motor);
 
 	AlternateMotor::Config r_motor;
-	r_motor.id = 1;
+	r_motor.id = 0;
 	AlternateMotor motor_l(r_motor);
 
 	DirEncoder::Config enconfig;
@@ -384,8 +420,8 @@ int main()
 	lcd.Clear(0);
 	System::DelayMs(25);
 
-	float trust_gyro = 1;
-	float trust_accel = 1-trust_gyro;
+
+
 	float raw_angle;
 	pt= System::Time();
 	while(1){
@@ -473,22 +509,23 @@ int main()
 	//graph testing variable
 
 	//	pGrapher.addWatchedVar(&ir_Kp, "float", sizeof(float), "1");
-	//	pGrapher.addWatchedVar(&ir_Kd, "float", sizeof(float), "2");
-	//	pGrapher.addWatchedVar(&il_Kp, "float", sizeof(float), "3");
-	//	pGrapher.addWatchedVar(&il_Kd, "float", sizeof(float), "4");
-	//	pGrapher.addWatchedVar(&ic_Kp, "1");
-	//	pGrapher.addWatchedVar(&gyro_angle, "2");
-	//	pGrapher.addWatchedVar(&accel_angle, "3");
-	//	pGrapher.addWatchedVar(&output_angle, "4");
+	//		pGrapher.addWatchedVar(&ir_Kd, "2");
+	//		pGrapher.addWatchedVar(&il_Kp, "3");
 	pGrapher.addWatchedVar(&ideal_count, "1");
-	pGrapher.addWatchedVar(&count_r, "2");
-	pGrapher.addWatchedVar(&count_l, "3");
-	pGrapher.addWatchedVar(&encoder_Kp, "4");
-	pGrapher.addWatchedVar(&ir_encoder_error, "5");
-	pGrapher.addWatchedVar(&encoder_Kd, "6");
-	pGrapher.addWatchedVar(&encoder_Ki, "7");
-	pGrapher.addWatchedVar(&il_encoder_errorsum, "8");
-	//	pGrapher.addWatchedVar(&ir_encoder_errorsum, "9");
+	pGrapher.addWatchedVar(&ic_Kp, "2");
+	pGrapher.addWatchedVar(&ic_Kd, "3");
+	pGrapher.addWatchedVar(&encoder_r_Kp, "4");
+	pGrapher.addWatchedVar(&encoder_r_Kd, "5");
+	//	pGrapher.addWatchedVar(&ir_encoder_errorsum, "6");
+	pGrapher.addWatchedVar(&output_angle, "6");
+	pGrapher.addWatchedVar(&count_l, "7");
+	pGrapher.addWatchedVar(&count_r, "8");
+
+	//	pGrapher.addWatchedVar(&speed_l, "5");
+
+	//	pGrapher.addWatchedVar(&speed_r, "7");
+	//	pGrapher.addWatchedVar(&ratio_old, "8");
+
 
 
 	//	pGrapher.addWatchedVar(&kalman_value[0], "6");
@@ -508,18 +545,13 @@ int main()
 
 		if(t !=System::Time()){
 			t = System::Time();
-			//		if(t - pt1 <0 ||t - pt2 < 0 ||t- pt3 < 0){
-			//			pt1 = 0;
-			//			pt2 = 0;
-			//			pt3 = 0;
-			//		}
-
-			//		 && (t- pt2) >=2
+			if(t - pt1 <0 ||t - pt2 < 0 ||t- pt3 < 0){
+				pt1 = 0;
+				pt2 = 0;
+				pt3 = 0;
+			}
 
 
-			//		speed_r = encoder_value*10;
-			//		motor_r.SetPower(speed_r);
-			//		motor_l.SetPower(speed_r);
 
 
 			if((int32_t)(t-pt1) >= 11  && yo==0){
@@ -527,71 +559,68 @@ int main()
 				//
 				//				//				lincoln.Turn();
 				pt1 = System::Time();
-				//						motor_l.SetPower(0);
-				motor_r.SetPower(0);
+				//
 				yo = 1;
 
 				encoder_r.Update();
 				encoder_l.Update();
-				//
-				//
-				//				//				yo++;
-				//				mpu6050.Update();
-				//
-				//				accel = mpu6050.GetAccel();
-				//				omega = mpu6050.GetOmega();
-				//
-				//				last_accel_angle = accel_angle;
-				//				accel_angle = accel[0]*57.29578;
-				//				accel_angle = 0.65*last_accel_angle +0.35*accel_angle;
-				//
-				//				last_gyro_angle = gyro_angle;
-				//				gyro_angle += (-1) *omega[1]*0.005+0.006706 + 0.0098*(accel_angle - gyro_angle);
-				//				//			gyro_angle = accel_angle+(-1) *omega[0];
-				//				//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
-				//
-				//
-				//
-				//				//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
-				//				//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
-				//				//				output_angle = trust_gyro*gyro_angle +trust_accel*accel_angle;
-				//
-				//				output_angle = gyro_angle;
-				//				last_angle_error = now_angle_error;
-				//				//				if(output_angle - raw_angle <5 && output_angle - raw_angle > -5){
-				//				//					original_angle = 0.8*original_angle +0.2*raw_angle;
-				//				//				}
-				//				//				else if(output_angle - original_angle >=5){
-				//				//					original_angle -= (output_angle - raw_angle-5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
-				//				//				}
-				//				//				else if(output_angle - original_angle <=-5){
-				//				//					original_angle -= (output_angle - raw_angle + 5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
-				//				//				}
-				//
-				//
-				//
-				//
-				//				now_angle_error = output_angle - original_angle;
-				//				angle_error_change = now_angle_error -last_angle_error;
-				//
-				//				last_ideal_count = ideal_count;
-				//				if(now_angle_error >= 0){
-				//					square_sign = 1;
+
+				mpu6050.Update();
+
+				accel = mpu6050.GetAccel();
+				omega = mpu6050.GetOmega();
+
+				last_accel_angle = accel_angle;
+				accel_angle = accel[0]*57.29578;
+				accel_angle = trust_old_accel*last_accel_angle + trust_new_accel*accel_angle;
+
+				last_gyro_angle = gyro_angle;
+				gyro_angle += (-1) *omega[1]*0.005+0.006706 + trust_accel*(accel_angle - gyro_angle);
+				//			gyro_angle = accel_angle+(-1) *omega[0];
+				//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
+
+
+
+				//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
+				//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
+				//				output_angle = trust_gyro*gyro_angle +trust_accel*accel_angle;
+
+				output_angle = gyro_angle;
+				last_angle_error = now_angle_error;
+				//				if(output_angle - raw_angle <5 && output_angle - raw_angle > -5){
+				//					original_angle = 0.8*original_angle +0.2*raw_angle;
 				//				}
-				//				else if(now_angle_error < 0){
-				//					square_sign = -1;
+				//				else if(output_angle - original_angle >=5){
+				//					original_angle -= (output_angle - raw_angle-5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
 				//				}
-				//				ideal_count = (int32_t)(ic_Kp*(now_angle_error)+ ic_Kd*angle_error_change);
-				//				//			ideal_count = 3.1*(now_error)+ 0.9 * angle_error_change;
-				//
-				//				//				if(last_ideal_count >=0){
-				//				//					last_sign = 1;
-				//				//				}
-				//				//				else{
-				//				//					last_sign = 0;
-				//				//				}
-				//
-				//				ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
+				//				else if(output_angle - original_angle <=-5){
+				//					original_angle -= (output_angle - raw_angle + 5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
+				//				}
+
+
+
+
+				now_angle_error = output_angle - original_angle;
+				angle_error_change = now_angle_error -last_angle_error;
+
+				last_ideal_count = ideal_count;
+				if(now_angle_error >= 0){
+					square_sign = 1;
+				}
+				else if(now_angle_error < 0){
+					square_sign = -1;
+				}
+				ideal_count = (int32_t)(ic_Kp*(now_angle_error)+ ic_Kd*angle_error_change);
+				//			ideal_count = 3.1*(now_error)+ 0.9 * angle_error_change;
+
+				//				if(last_ideal_count >=0){
+				//					last_sign = 1;
+				//				}
+				//				else{
+				//					last_sign = 0;
+				//				}
+
+				ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
 
 
 
@@ -711,6 +740,12 @@ int main()
 
 
 
+
+
+
+
+
+
 			if((int32_t)(t-pt1) >= 3 && yo ==1){
 				//				lincoln.Turn();
 				pt2=System::Time();
@@ -721,211 +756,309 @@ int main()
 				encoder_r.Update();
 				encoder_l.Update();
 
-				count_r = (int32_t)(-1 * encoder_r.GetCount() / 3);
-				count_l = (int32_t)(encoder_l.GetCount() / 3);
+				count_r = (int32_t)(-1*encoder_r.GetCount());
+				count_l = (int32_t)(encoder_l.GetCount());
+
+				last_sign = sign;
+				if(ideal_count > 0){
+					sign = 1;
+				}
+				else if(ideal_count < 0){
+					sign = 0;
+				}
+				else if(ideal_count ==0){
+					sign = 2;
+				}
 
 
-				last_ir_encoder_error = ir_encoder_error;
-				ir_encoder_error = ideal_count - count_r;
-				last_il_encoder_error = il_encoder_error;
-				il_encoder_error = ideal_count - count_l;
-
-
-				il_encoder_error_change = il_encoder_error -last_il_encoder_error;
-				ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
-
-				old_speed_r = speed_r;
-				old_speed_l = speed_l;
-
-				ir_encoder_errorsum += ir_encoder_error;
-				il_encoder_errorsum += il_encoder_error;
-
-
-				lincoln1 = (float)(ir_encoder_error_change * encoder_Kd / 3);
-
-				speed_r = (int32_t)(ir_encoder_error * encoder_Kp + lincoln1 + ir_encoder_errorsum*encoder_Ki*0.003);
-				speed_l = (int32_t)(il_encoder_error * encoder_Kp + (float)(il_encoder_error_change * encoder_Kd/3) + il_encoder_errorsum*encoder_Ki*0.003);
-
-//				speed_r = ratio_old * old_speed_r + ratio_new * speed_r;
-//				speed_l = ratio_old * old_speed_l + ratio_new * speed_l;
-
-				speed_r = speed_r*turn[1];
-				speed_l = speed_l*turn[0];
-
-				if(speed_r >= 0)
-					motor_r.SetPower(1);
-				else
-					motor_r.SetPower(0);
-
-				if(speed_l >= 0)
-					motor_l.SetPower(1);
-				else
+				if(sign == 2){
 					motor_l.SetPower(0);
+					motor_r.SetPower(0);
+				}
 
-				motor_l.SetPower(abs(speed_l));
-				motor_r.SetPower(abs(speed_r));
+				else{
+
+					if(last_sign != sign){
+						motor_l.SetPower(0);
+						motor_r.SetPower(0);
+						motor_l.SetClockwise(sign);
+						motor_r.SetClockwise(sign);
+					}
+
+					last_ir_encoder_error = ir_encoder_error;
+					ir_encoder_error = ideal_count - count_r;
+					last_il_encoder_error = il_encoder_error;
+					il_encoder_error = ideal_count - count_l;
+
+
+					il_encoder_error_change = il_encoder_error -last_il_encoder_error;
+					ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
+
+					old_speed_r = speed_r;
+					old_speed_l = speed_l;
+
+					ir_encoder_errorsum -= ir_encoder_error;
+					il_encoder_errorsum -= il_encoder_error;
+
+
+					lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
+
+					speed_r = (int32_t)(ir_encoder_error *encoder_r_Kp + (float)(ir_encoder_error_change * encoder_r_Kd/3) + ir_encoder_errorsum*encoder_r_Ki*0.003);
+					speed_l = (int32_t)(il_encoder_error *encoder_l_Kp + (float)(il_encoder_error_change * encoder_l_Kd/3) + il_encoder_errorsum*encoder_l_Ki*0.003);
+					if(speed_l > 1000 && sign ==1){
+						speed_l = 1000;
+					}
+					else if(speed_l < 0 && sign ==1){
+						speed_l = 0;
+					}
+					else if(speed_l > 0 && sign ==0){
+						speed_l = 0;
+					}
+					else if(speed_l < -1000 && sign ==0){
+						speed_l = -1000;
+					}
+
+
+					if(speed_r > 1000 && sign ==1){
+						speed_r = 1000;
+					}
+					else if(speed_r < 0 && sign ==1){
+						speed_r = 0;
+					}
+					else if(speed_r > 0 && sign ==0){
+						speed_r = 0;
+					}
+					else if(speed_r < -1000 && sign ==0){
+						speed_r = -1000;
+					}
+
+
+
+
+					speed_r = ratio_old*old_speed_r + ratio_new*speed_r;
+					speed_l = ratio_old*old_speed_l + ratio_new*speed_l;
+
+					speed_r = speed_r*turn[1];
+					speed_l = speed_l*turn[0];
+
+
+					motor_l.SetPower(abs(speed_l)+107);
+					motor_r.SetPower(abs(speed_r)+113);
+
+
+				}
+
+
+			}
+
+
+			/*second round to get angle and encoder
+			 *
+			 *
+			 *
+			 *
+			 */
+
+			if((int32_t)(t-pt2) >= 2  && yo == 2){
+				//				lincoln.Turn();
+				pt3 = System::Time();
+
+				yo = 3;
+
+				encoder_r.Update();
+				encoder_l.Update();
+
+				mpu6050.Update();
+
+				accel = mpu6050.GetAccel();
+				omega = mpu6050.GetOmega();
+
+				last_accel_angle = accel_angle;
+				accel_angle = accel[0]*57.29578;
+				accel_angle = trust_old_accel*last_accel_angle +trust_new_accel*accel_angle;
+
+				last_gyro_angle = gyro_angle;
+				gyro_angle += (-1) *omega[1]*0.005+0.006706 + trust_accel*(accel_angle - gyro_angle);
+				//			gyro_angle = accel_angle+(-1) *omega[0];
+				//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
+
+
+
+				//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
+				//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
+				//				output_angle = trust_gyro*gyro_angle +trust_accel*accel_angle;
+
+				output_angle = gyro_angle;
+				last_angle_error = now_angle_error;
+				//				if(output_angle - raw_angle <5 && output_angle - raw_angle > -5){
+				//					original_angle = 0.8*original_angle +0.2*raw_angle;
+				//				}
+				//				else if(output_angle - original_angle >=5){
+				//					original_angle -= (output_angle - raw_angle-5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
+				//				}
+				//				else if(output_angle - original_angle <=-5){
+				//					original_angle -= (output_angle - raw_angle + 5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
+				//				}
+
+
+
+
+
+
+				now_angle_error = output_angle - original_angle;
+				angle_error_change = now_angle_error -last_angle_error;
+
+				last_ideal_count = ideal_count;
+				if(now_angle_error >= 0){
+					square_sign = 1;
+				}
+				else if(now_angle_error < 0){
+					square_sign = -1;
+				}
+				ideal_count = (int32_t)(ic_Kp*(now_angle_error)+ ic_Kd*angle_error_change);
+				//			ideal_count = 3.1*(now_error)+ 0.9 * angle_error_change;
+
+				//				if(last_ideal_count >=0){
+				//					last_sign = 1;
+				//				}
+				//				else{
+				//					last_sign = 0;
+				//				}
+
+				ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
+
+
 
 
 			}
 
 
 
-		/*second round to get angle and encoder
-		 *
-		 *
-		 *
-		 *
-		 */
 
-		if((int32_t)(t-pt2) >= 2  && yo == 2){
-			//				lincoln.Turn();
-			pt3 = System::Time();
 
-			yo = 3;
+			if((int32_t)(t-pt3) >= 3 && yo == 3){
+				//				lincoln.Turn();
+				pt4 = System::Time();
 
-			encoder_r.Update();
-			encoder_l.Update();
-			//
-			//
-			//				//				yo++;
-			//				mpu6050.Update();
-			//
-			//				accel = mpu6050.GetAccel();
-			//				omega = mpu6050.GetOmega();
-			//
-			//				last_accel_angle = accel_angle;
-			//				accel_angle = accel[0]*57.29578;
-			//				accel_angle = 0.65*last_accel_angle +0.35*accel_angle;
-			//
-			//				last_gyro_angle = gyro_angle;
-			//				gyro_angle += (-1) *omega[1]*0.005+0.006706 + 0.0098*(accel_angle - gyro_angle);
-			//				//			gyro_angle = accel_angle+(-1) *omega[0];
-			//				//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
-			//
-			//
-			//
-			//				//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
-			//				//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
-			//				//				output_angle = trust_gyro*gyro_angle +trust_accel*accel_angle;
-			//
-			//				output_angle = gyro_angle;
-			//				last_angle_error = now_angle_error;
-			//				//				if(output_angle - raw_angle <5 && output_angle - raw_angle > -5){
-			//				//					original_angle = 0.8*original_angle +0.2*raw_angle;
-			//				//				}
-			//				//				else if(output_angle - original_angle >=5){
-			//				//					original_angle -= (output_angle - raw_angle-5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
-			//				//				}
-			//				//				else if(output_angle - original_angle <=-5){
-			//				//					original_angle -= (output_angle - raw_angle + 5)*still_Kp + (output_angle - raw_angle -last_angle_error)*still_Kd;
-			//				//				}
-			//
-			//
-			//
-			//
-			//
-			//
-			//				now_angle_error = output_angle - original_angle;
-			//				angle_error_change = now_angle_error -last_angle_error;
-			//
-			//				last_ideal_count = ideal_count;
-			//				if(now_angle_error >= 0){
-			//					square_sign = 1;
-			//				}
-			//				else if(now_angle_error < 0){
-			//					square_sign = -1;
-			//				}
-			//				ideal_count = (int32_t)(ic_Kp*(now_angle_error)+ ic_Kd*angle_error_change);
-			//				//			ideal_count = 3.1*(now_error)+ 0.9 * angle_error_change;
-			//
-			//				//				if(last_ideal_count >=0){
-			//				//					last_sign = 1;
-			//				//				}
-			//				//				else{
-			//				//					last_sign = 0;
-			//				//				}
-			//
-			//				ideal_count = (int32_t)(0.5*last_ideal_count + 0.5*ideal_count);
+				//				pt1 = t;
+				yo = 4;
+
+
+				encoder_r.Update();
+				encoder_l.Update();
+
+				count_r = (int32_t)(-1*encoder_r.GetCount());
+				count_l = (int32_t)(encoder_l.GetCount());
+
+				last_sign = sign;
+				if(ideal_count > 0){
+					sign = 1;
+				}
+				else if(ideal_count < 0){
+					sign = 0;
+				}
+				else if(ideal_count ==0){
+					sign = 2;
+				}
+
+
+				if(sign == 2){
+					motor_l.SetPower(0);
+					motor_r.SetPower(0);
+				}
+
+				else{
+
+					if(last_sign != sign){
+						motor_l.SetPower(0);
+						motor_r.SetPower(0);
+						motor_l.SetClockwise(sign);
+						motor_r.SetClockwise(sign);
+					}
+
+					last_ir_encoder_error = ir_encoder_error;
+					ir_encoder_error = ideal_count - count_r;
+					last_il_encoder_error = il_encoder_error;
+					il_encoder_error = ideal_count - count_l;
+
+
+					il_encoder_error_change = il_encoder_error -last_il_encoder_error;
+					ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
+
+					old_speed_r = speed_r;
+					old_speed_l = speed_l;
+
+					ir_encoder_errorsum -= ir_encoder_error;
+					il_encoder_errorsum -= il_encoder_error;
+
+
+					lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
+
+					speed_r = (int32_t)(ir_encoder_error *encoder_r_Kp + (float)(ir_encoder_error_change * encoder_r_Kd/3) + ir_encoder_errorsum*encoder_r_Ki*0.003);
+					speed_l = (int32_t)(il_encoder_error *encoder_l_Kp + (float)(il_encoder_error_change * encoder_l_Kd/3) + il_encoder_errorsum*encoder_l_Ki*0.003);
+					if(speed_l > 1000 && sign ==1){
+						speed_l = 1000;
+					}
+					else if(speed_l < 0 && sign ==1){
+						speed_l = 0;
+					}
+					else if(speed_l > 0 && sign ==0){
+						speed_l = 0;
+					}
+					else if(speed_l < -1000 && sign ==0){
+						speed_l = -1000;
+					}
+
+
+					if(speed_r > 1000 && sign ==1){
+						speed_r = 1000;
+					}
+					else if(speed_r < 0 && sign ==1){
+						speed_r = 0;
+					}
+					else if(speed_r > 0 && sign ==0){
+						speed_r = 0;
+					}
+					else if(speed_r < -1000 && sign ==0){
+						speed_r = -1000;
+					}
+
+
+
+
+					speed_r = ratio_old*old_speed_r + ratio_new*speed_r;
+					speed_l = ratio_old*old_speed_l + ratio_new*speed_l;
+
+					speed_r = speed_r*turn[1];
+					speed_l = speed_l*turn[0];
+
+
+					motor_l.SetPower(abs(speed_l)+107);
+					motor_r.SetPower(abs(speed_r)+113);
+
+
+				}
+
+
+			}
+
+
+
+
+
+
+
+			if((int32_t)(t-pt4) >= 2 && yo ==4){
+				pt5 = System::Time();
+				yo =0;
+				pGrapher.sendWatchData();
+
+			}
 
 
 
 
 		}
-
-
-
-
-
-		if((int32_t)(t-pt3) >= 3 && yo == 3){
-			//				lincoln.Turn();
-			pt4 = System::Time();
-
-			//				pt1 = t;
-			yo = 4;
-
-
-			encoder_r.Update();
-			encoder_l.Update();
-
-			count_r = (int32_t)(-1 * encoder_r.GetCount() / 3);
-			count_l = (int32_t)(encoder_l.GetCount() / 3);
-
-
-			last_ir_encoder_error = ir_encoder_error;
-			ir_encoder_error = ideal_count - count_r;
-			last_il_encoder_error = il_encoder_error;
-			il_encoder_error = ideal_count - count_l;
-
-
-			il_encoder_error_change = il_encoder_error -last_il_encoder_error;
-			ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
-
-			old_speed_r = speed_r;
-			old_speed_l = speed_l;
-
-			ir_encoder_errorsum += ir_encoder_error;
-			il_encoder_errorsum += il_encoder_error;
-
-
-			lincoln1 = (float)(ir_encoder_error_change * encoder_Kd / 3);
-
-			speed_r = (int32_t)(ir_encoder_error * encoder_Kp + lincoln1 + ir_encoder_errorsum*encoder_Ki*0.003);
-			speed_l = (int32_t)(il_encoder_error * encoder_Kp + (float)(il_encoder_error_change * encoder_Kd/3) + il_encoder_errorsum*encoder_Ki*0.003);
-
-//			speed_r = ratio_old * old_speed_r + ratio_new * speed_r;
-//			speed_l = ratio_old * old_speed_l + ratio_new * speed_l;
-
-			speed_r = speed_r*turn[1];
-			speed_l = speed_l*turn[0];
-
-			if(speed_r >= 0)
-				motor_r.SetPower(1);
-			else
-				motor_r.SetPower(0);
-
-			if(speed_l >= 0)
-				motor_l.SetPower(1);
-			else
-				motor_l.SetPower(0);
-
-			motor_l.SetPower(abs(speed_l));
-			motor_r.SetPower(abs(speed_r));
-
-
-
-		}
-
-
-
-
-
-
-
-	if((int32_t)(t-pt4) >= 2 && yo ==4){
-		pt5 = System::Time();
-		yo =0;
-		pGrapher.sendWatchData();
-
 	}
 
 
@@ -933,8 +1066,6 @@ int main()
 
 }
 
-}
-}
 
 
 
@@ -942,4 +1073,28 @@ int main()
 
 
 
+//		console.SetCursorRow(2);
+//		console.PrintString(libutil::String::Format("Omega: %.3f", omega[2]).c_str(), -1);
+//
+//		console.SetCursorRow(4);
+//		console.PrintString(libutil::String::Format("Accel: %.3f", accel[2]).c_str(), -1);
+//
+//		console.SetCursorRow(6);
+//		console.PrintString(libutil::String::Format("Encoder:%.3d", count_l).c_str(), -1);
 
+//		int n = sprintf(buffer, "%.3f,%.3f,",real_angle,peter_angle);
+//		fu.SendBuffer((Byte*)buffer,n);
+//		memset(buffer, 0, n);
+
+
+
+
+
+//		motor_l.SetClockwise(1);
+//		motor_r.SetClockwise(0);
+//		motor_l.SetPower(a+130);
+//		motor_r.SetPower(a+150);
+
+//		console.SetCursorRow((uint8_t)2);
+//		sprintf(buffer, "angle:%.2f,%.2f\nspeed:%d, slope:%f",real_angle,(angle[2]*360)/6.2831852,speed,slope);
+//		console.PrintString((char*)buffer);
