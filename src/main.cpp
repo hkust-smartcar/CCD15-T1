@@ -195,6 +195,14 @@ int main()
 	AbEncoder encoder_r(r_encoder);
 
 	Tsl1401cl ccd(0);
+	Byte center_line = 0;
+	Byte center_line_flag = 0;
+	int16_t center_line_error = 0;
+	float last_center_line_error = 0;
+	float now_center_line_error = 0;
+	float center_line_error_change = 0;
+	float road_length = 0;
+	float center_line_errorsum = 0;
 
 	St7735r::Config config1;
 	config1.is_revert = false;
