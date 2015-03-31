@@ -60,7 +60,7 @@ Mcg::Config Mcg::GetMcgConfig()
 	//Do Not change
 	config.external_oscillator_khz = 50000;
 	//Set MU clock to 100MHz
-	config.core_clock_khz = 180000;
+	config.core_clock_khz = 150000;
 	return config;
 }
 
@@ -122,7 +122,7 @@ Byte r_edge = 0;
 Byte l_color_flag = 0;
 Byte r_color_flag = 0;
 float moving_gain = 0;
-
+Byte blue_flag = 0;
 
 
 //float howard =0;
@@ -165,17 +165,33 @@ void myListener(const std::vector<Byte> &bytes)
 	case '@':
 		ideal_count += 20;
 		break;
-	case '8':
-		turn[0] = 0;
-		turn[1] = 1.3;
-		break;
+		//	case '8':
+		//		turn[0] = 0;
+		//		turn[1] = 1.3;
+		//		break;
+		//	case '9':
+		//		turn[0] = 1;
+		//		turn[1] = 1;
+		//		break;
+		//	case '0':
+		//		turn[0] = 1.3;
+		//		turn[1] = 0;
+		//		break;
 	case '9':
-		turn[0] = 1;
-		turn[1] = 1;
+		if(ic_Kp_const > 0.1){
+			ic_Kp_const -= 0.1;
+		}
 		break;
 	case '0':
-		turn[0] = 1.3;
-		turn[1] = 0;
+		ic_Kp_const += 0.1;
+		break;
+	case '(':
+		if(ic_Kp_const > 1){
+			ic_Kp_const -= 1;
+		}
+		break;
+	case ')':
+		ic_Kp_const += 1;
 		break;
 	case 'z':
 		if(turning_Kp > 0.1){
@@ -298,6 +314,7 @@ void myListener(const std::vector<Byte> &bytes)
 
 int main()
 {
+
 	std::array<float, 3>accel;
 	std::array<float, 3>angle;
 	std::array<float, 3>omega;
@@ -415,6 +432,7 @@ int main()
 	Mpu6050 mpu6050(gyro_config);
 
 
+
 	//	Mma8451q::Config accel_config;
 	//	//sensitivity of accelerometer
 	//	accel_config.id = 0;
@@ -453,9 +471,9 @@ int main()
 
 
 
-	//	Gpo::Config howard;
-	//	howard.pin = Pin::Name::kPtc9;
-	//	Gpo lincoln(howard);
+	Gpo::Config howard;
+	howard.pin = Pin::Name::kPtd1;
+	Gpo lincoln(howard);
 
 
 	Joystick::Config joycon;
@@ -550,6 +568,7 @@ int main()
 	uint32_t pt4 = 0;
 	uint32_t pt5 = 0;
 	uint32_t pt6 = 0;
+	uint32_t pt7 = 0;
 
 
 	int square_sign = 0;      //for the disappearance of -sign in power two fucntion
@@ -603,17 +622,9 @@ int main()
 	//	pGrapher.addWatchedVar(&kalman_value[1], "7");
 
 	pGrapher.Init(&myListener);
+	//					lincoln.Turn();
 
-
-
-	encoder_r.Update();               //to reset the count
-	encoder_l.Update();
 	while(1){
-
-
-
-		//					lincoln.Turn();
-
 
 		if(t !=System::Time()){
 			t = System::Time();
@@ -632,7 +643,7 @@ int main()
 			if((int32_t)(t-pt1) >= 11  && yo==0){
 				//
 				//
-				//				//				lincoln.Turn();
+				//					lincoln.Turn();
 				pt1 = System::Time();
 				//
 				yo = 1;
@@ -722,7 +733,7 @@ int main()
 
 
 
-			if((int32_t)(t-pt1) >= 3 && yo ==1){
+			if((int32_t)(t-pt1) >= 1 && yo ==1){
 				//				lincoln.Turn();
 				pt2=System::Time();
 
@@ -752,87 +763,86 @@ int main()
 					motor_r.SetPower(0);
 				}
 
-				else{
+				else if(last_sign != sign){
 
-					if(last_sign != sign){
-						motor_l.SetPower(0);
-						motor_r.SetPower(0);
-						motor_l.SetClockwise(sign);
-						motor_r.SetClockwise(sign);
-					}
+					motor_l.SetPower(0);
+					motor_r.SetPower(0);
+					motor_l.SetClockwise(sign);
+					motor_r.SetClockwise(sign);
+				}
 
-					last_ir_encoder_error = ir_encoder_error;
-					ir_encoder_error = ideal_count - turning_count - count_r;        //turning_count is positive when car needs to turn right
-					last_il_encoder_error = il_encoder_error;                        //left wheel faster right wheel slower
-					il_encoder_error = ideal_count + turning_count - count_l;        //turning_count is positive when car needs to turn right
-
-
-					il_encoder_error_change = il_encoder_error -last_il_encoder_error;
-					ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
-
-					old_speed_r = speed_r;
-					old_speed_l = speed_l;
-
-					ir_encoder_errorsum -= ir_encoder_error;
-					il_encoder_errorsum -= il_encoder_error;
+				last_ir_encoder_error = ir_encoder_error;
+				ir_encoder_error = ideal_count - turning_count - count_r;        //turning_count is positive when car needs to turn right
+				last_il_encoder_error = il_encoder_error;                        //left wheel faster right wheel slower
+				il_encoder_error = ideal_count + turning_count - count_l;        //turning_count is positive when car needs to turn right
 
 
-					lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
+				il_encoder_error_change = il_encoder_error -last_il_encoder_error;
+				ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
+
+				old_speed_r = speed_r;
+				old_speed_l = speed_l;
+
+				ir_encoder_errorsum -= ir_encoder_error;
+				il_encoder_errorsum -= il_encoder_error;
 
 
-					//					if((il_encoder_error_change+ir_encoder_error_change)/2 >= 15){
-					//						speed_l = 2.4988*ideal_count + 31.4593;                           //data from graph,reference power
-					//						speed_r = 2.38436*ideal_count + 41.1278;
-					//					}
-					speed_r += (int32_t)((int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
-					speed_l += (int32_t)((int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
-					if(speed_l > 1000 && sign ==1){
-						speed_l = 1000;
-					}
-					else if(speed_l < 0 && sign ==1){
-						speed_l = 0;
-					}
-					else if(speed_l > 0 && sign ==0){
-						speed_l = 0;
-					}
-					else if(speed_l < -1000 && sign ==0){
-						speed_l = -1000;
-					}
+				lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
 
 
-					if(speed_r > 1000 && sign ==1){
-						speed_r = 1000;
-					}
-					else if(speed_r < 0 && sign ==1){
-						speed_r = 0;
-					}
-					else if(speed_r > 0 && sign ==0){
-						speed_r = 0;
-					}
-					else if(speed_r < -1000 && sign ==0){
-						speed_r = -1000;
-					}
+				//					if((il_encoder_error_change+ir_encoder_error_change)/2 >= 15){
+				//						speed_l = 2.4988*ideal_count + 31.4593;                           //data from graph,reference power
+				//						speed_r = 2.38436*ideal_count + 41.1278;
+				//					}
+				speed_r += (int32_t)((int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
+				speed_l += (int32_t)((int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
+				if(speed_l > 1000 && sign ==1){
+					speed_l = 1000;
+				}
+				else if(speed_l < 0 && sign ==1){
+					speed_l = 0;
+				}
+				else if(speed_l > 0 && sign ==0){
+					speed_l = 0;
+				}
+				else if(speed_l < -1000 && sign ==0){
+					speed_l = -1000;
+				}
 
 
-
-
-					speed_r = ratio_old*old_speed_r + ratio_new*speed_r;
-					speed_l = ratio_old*old_speed_l + ratio_new*speed_l;
-
-					speed_r = speed_r*turn[1];
-					speed_l = speed_l*turn[0];
-
-
-
-					motor_l.SetPower(abs(2.4988*speed_l + 31.4593));
-					motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
-
-
+				if(speed_r > 1000 && sign ==1){
+					speed_r = 1000;
+				}
+				else if(speed_r < 0 && sign ==1){
+					speed_r = 0;
+				}
+				else if(speed_r > 0 && sign ==0){
+					speed_r = 0;
+				}
+				else if(speed_r < -1000 && sign ==0){
+					speed_r = -1000;
 				}
 
 
 
+
+				speed_r = ratio_old*old_speed_r + ratio_new*speed_r;
+				speed_l = ratio_old*old_speed_l + ratio_new*speed_l;
+
+				speed_r = speed_r*turn[1];
+				speed_l = speed_l*turn[0];
+
+
+
+				motor_l.SetPower(abs(2.4988*speed_l + 31.4593));
+				motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
+
+
 			}
+
+
+
+
 
 			/*second round to get angle and encoder
 			 *
@@ -841,7 +851,7 @@ int main()
 			 *
 			 */
 
-			if((int32_t)(t-pt2) >= 2  && yo == 2){
+			if((int32_t)(t-pt2) >= 1  && yo == 2){
 				//				lincoln.Turn();
 				pt3 = System::Time();
 
@@ -920,7 +930,7 @@ int main()
 
 
 
-			if((int32_t)(t-pt3) >= 3 && yo == 3){
+			if((int32_t)(t-pt3) >= 1 && yo == 3){
 				//				lincoln.Turn();
 				pt4 = System::Time();
 
@@ -951,248 +961,317 @@ int main()
 					motor_r.SetPower(0);
 				}
 
-				else{
+				else if(last_sign != sign){
 
-					if(last_sign != sign){
-						motor_l.SetPower(0);
-						motor_r.SetPower(0);
-						motor_l.SetClockwise(sign);
-						motor_r.SetClockwise(sign);
-					}
+					motor_l.SetPower(0);
+					motor_r.SetPower(0);
+					motor_l.SetClockwise(sign);
+					motor_r.SetClockwise(sign);
+				}
 
-					last_ir_encoder_error = ir_encoder_error;
-					ir_encoder_error = ideal_count - turning_count - count_r;        //turning_count is positive when car needs to turn right
-					last_il_encoder_error = il_encoder_error;                        //left wheel faster right wheel slower
-					il_encoder_error = ideal_count + turning_count - count_l;        //turning_count is positive when car needs to turn right
-
-
-					il_encoder_error_change = il_encoder_error -last_il_encoder_error;
-					ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
-
-					old_speed_r = speed_r;
-					old_speed_l = speed_l;
-
-					ir_encoder_errorsum -= ir_encoder_error;
-					il_encoder_errorsum -= il_encoder_error;
+				last_ir_encoder_error = ir_encoder_error;
+				ir_encoder_error = ideal_count - turning_count - count_r;        //turning_count is positive when car needs to turn right
+				last_il_encoder_error = il_encoder_error;                        //left wheel faster right wheel slower
+				il_encoder_error = ideal_count + turning_count - count_l;        //turning_count is positive when car needs to turn right
 
 
-					//						lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
+				il_encoder_error_change = il_encoder_error -last_il_encoder_error;
+				ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
+
+				old_speed_r = speed_r;
+				old_speed_l = speed_l;
+
+				ir_encoder_errorsum -= ir_encoder_error;
+				il_encoder_errorsum -= il_encoder_error;
 
 
-					speed_r += (int32_t)((int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
-					speed_l += (int32_t)((int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
-					if(speed_l > 1000 && sign ==1){
-						speed_l = 1000;
-					}
-					else if(speed_l < 0 && sign ==1){
-						speed_l = 0;
-					}
-					else if(speed_l > 0 && sign ==0){
-						speed_l = 0;
-					}
-					else if(speed_l < -1000 && sign ==0){
-						speed_l = -1000;
-					}
+				//						lincoln1 = (float)(ir_encoder_error_change * encoder_r_Kd/3);
 
 
-					if(speed_r > 1000 && sign ==1){
-						speed_r = 1000;
-					}
-					else if(speed_r < 0 && sign ==1){
-						speed_r = 0;
-					}
-					else if(speed_r > 0 && sign ==0){
-						speed_r = 0;
-					}
-					else if(speed_r < -1000 && sign ==0){
-						speed_r = -1000;
-					}
+				speed_r += (int32_t)((int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
+				speed_l += (int32_t)((int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
+				if(speed_l > 1000 && sign ==1){
+					speed_l = 1000;
+				}
+				else if(speed_l < 0 && sign ==1){
+					speed_l = 0;
+				}
+				else if(speed_l > 0 && sign ==0){
+					speed_l = 0;
+				}
+				else if(speed_l < -1000 && sign ==0){
+					speed_l = -1000;
+				}
 
 
-
-
-					speed_r = ratio_old*old_speed_r + ratio_new*speed_r;
-					speed_l = ratio_old*old_speed_l + ratio_new*speed_l;
-
-					speed_r = speed_r*turn[1];
-					speed_l = speed_l*turn[0];
-
-
-
-
-
-					motor_l.SetPower(abs(2.4988*speed_l + 31.4593));                        //data from graph, encoder--->power mapping
-					motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
-
-
+				if(speed_r > 1000 && sign ==1){
+					speed_r = 1000;
+				}
+				else if(speed_r < 0 && sign ==1){
+					speed_r = 0;
+				}
+				else if(speed_r > 0 && sign ==0){
+					speed_r = 0;
+				}
+				else if(speed_r < -1000 && sign ==0){
+					speed_r = -1000;
 				}
 
 
 
 
+				speed_r = ratio_old*old_speed_r + ratio_new*speed_r;
+				speed_l = ratio_old*old_speed_l + ratio_new*speed_l;
+
+				speed_r = speed_r*turn[1];
+				speed_l = speed_l*turn[0];
+
+
+
+
+
+				motor_l.SetPower(abs(2.4988*speed_l + 31.4593));                        //data from graph, encoder--->power mapping
+				motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
+
+
 			}
 
 
 
 
 
-			if((int32_t)(t-pt4) >= 2 && yo == 4){
-				pt5 = System::Time();
-				yo = 0;
+
+
+
+
+
+			if(yo == 4 && blue_flag == 1){
+//				pt5 = System::Time();
+				yo = 5;
 				pGrapher.sendWatchData();
+				blue_flag = 0;
 				//				int n = sprintf(buffer, "%d , %d\n",power, count_r);
 				//				fu.SendBuffer((Byte*)buffer,n);
 				//				memset(buffer, 0, n);
 
 			}
+			else if(yo == 4){
+				yo = 5;
+				blue_flag = 1;
+			}
 
 			//detect edge method***************
-//			if((int32_t)(t-pt6) >= 50 && yo == 5){
-//				pt6 = System::Time();
-//				yo = 0;
-//
-//				libsc::St7735r::Rect rect_;
-//				ccd.StartSample();
-//				while (!ccd.SampleProcess())
-//				{}
-//				pixel = ccd.GetData();
-//
-//				now_5pixel_value = pixel[57] + pixel[58] + pixel[59] + pixel[60] + pixel[61];
-//				for(int i=62; i < 118; i = i+5){
-//					last_5pixel_value = now_5pixel_value;
-//					now_5pixel_value = pixel[i] + pixel[i+1] + pixel[i+2] + pixel[i+3] + pixel[i+4];
-//					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
-//
-//					if(i == 62){
-//						pixel_avg_difference = pixel_difference_sum/((i-57)/5);
-//						if(pixel_difference_sum >= 1500){
-//							pixel_avg_difference = 1;
-//						}
-//
-//					}
-//
-//					if(pixel_avg_difference >= 10){
-//						pixel_avg_difference = 1;
-//					}
-//					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
-//						r_edge = i;
-//						r_color_flag = white_black;
-//						pixel_difference_sum = 0;
-//						break;
-//					}
-//
-//
-//					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
-//						r_edge = i;
-//						r_color_flag = black_white;
-//						pixel_difference_sum = 0;
-//						break;
-//					}
-//					else if(i == 117){
-//						if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 > 60000){
-//							r_color_flag = half_white;
-//							pixel_difference_sum = 0;
-//							break;
-//						}
-//						else if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 < 35000){
-//							r_color_flag = half_black;
-//							pixel_difference_sum = 0;
-//							break;
-//						}
-//					}
-//					pixel_avg_difference = pixel_difference_sum/((i-57)/5);
-//				}
-//
-//				now_5pixel_value = pixel[65] + pixel[66] + pixel[67] + pixel[68] + pixel[69];
-//				for(int i = 69; i > 8; i = i-5){
-//					last_5pixel_value = now_5pixel_value;
-//					now_5pixel_value = pixel[i] + pixel[i-1] + pixel[i-2] + pixel[i-3] + pixel[i-4];
-//					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
-//
-//					if(i == 69){
-//						pixel_avg_difference = pixel_difference_sum/((74-i)/5);
-//						if(pixel_difference_sum >= 1500){
-//							pixel_avg_difference = 1;
-//						}
-//					}
-//					if(pixel_avg_difference >= 10){
-//						pixel_avg_difference = 1;
-//					}
-//
-//					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
-//						l_edge = i;
-//						l_color_flag = white_black;
-//						pixel_difference_sum = 0;
-//						break;
-//					}
-//
-//
-//					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
-//						l_edge = i;
-//						l_color_flag = black_white;
-//						pixel_difference_sum = 0;
-//						break;
-//					}
-//					else if(i == 9){
-//
-//						if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 > 60000){
-//							l_color_flag = half_white;
-//							pixel_difference_sum = 0;
-//							break;
-//						}
-//						else if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 < 35000){
-//							l_color_flag = half_black;
-//							pixel_difference_sum = 0;
-//							break;
-//						}
-//						break;
-//					}
-//					pixel_avg_difference = pixel_difference_sum/((74 - i)/5);
-//				}
-//
-//				if(center_line_flag == 0){
-//					road_length = r_edge - l_edge;
-//					center_line = (road_length)/2+l_edge;
-//					center_line_flag++;
-//				}
-//
-//				last_center_line_error = now_center_line_error;
-//				now_center_line_error = center_line - ((r_edge - l_edge)/2+l_edge);         //if the error is positive, car need to turn right
-//				center_line_error_change = now_center_line_error - last_center_line_error;
-//				center_line_errorsum += now_center_line_error;
-//				if(center_line_errorsum > 1000){
-//					center_line_errorsum = 1000;
-//				}
-//				else if(center_line_errorsum < -1000){
-//					center_line_errorsum = -1000;
-//				}
-//
-//
-//				turning_count += (int32_t)(now_center_line_error*turning_Kp + center_line_error_change*turning_Kd + center_line_errorsum*turning_Ki);
-//
-//
-//
-//
-//
-//
-//				//
-//				//				if(now_center_line_error >=0){
-//				//					turn[0] = ccd_Kp*now_center_line_error + ccd_Kd*center_line_error_change;
-//				//					turn[1] =
-//				//				}
-//				//
-//			}
-//			else if(yo == 5){
-//				yo = 0;
-//			}
+			if((int32_t)(t-pt6) >= 40 && yo == 5){
+				pt6 = System::Time();
+				yo = 0;
+
+				ccd.StartSample();
+				while (!ccd.SampleProcess())
+				{}
+				pixel = ccd.GetData();
+
+				now_5pixel_value = pixel[57] + pixel[58] + pixel[59] + pixel[60] + pixel[61];
+				for(int i=62; i < 118; i = i+5){
+					last_5pixel_value = now_5pixel_value;
+					now_5pixel_value = pixel[i] + pixel[i+1] + pixel[i+2] + pixel[i+3] + pixel[i+4];
+					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
+
+					if(i == 62){
+						pixel_avg_difference = pixel_difference_sum/((i-57)/5);
+						if(pixel_difference_sum >= 1500){
+							pixel_avg_difference = 1;
+						}
+
+					}
+
+					if(pixel_avg_difference >= 10){
+						pixel_avg_difference = 1;
+					}
+					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
+						r_edge = i;
+						r_color_flag = white_black;
+						pixel_difference_sum = 0;
+						break;
+					}
+
+
+					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
+						r_edge = i;
+						r_color_flag = black_white;
+						pixel_difference_sum = 0;
+						break;
+					}
+					else if(i == 117){
+						if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 > 60000){
+							r_color_flag = half_white;
+							pixel_difference_sum = 0;
+							break;
+						}
+						else if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 < 35000){
+							r_color_flag = half_black;
+							pixel_difference_sum = 0;
+							break;
+						}
+					}
+					pixel_avg_difference = pixel_difference_sum/((i-57)/5);
+				}
+
+				now_5pixel_value = pixel[65] + pixel[66] + pixel[67] + pixel[68] + pixel[69];
+				for(int i = 69; i > 8; i = i-5){
+					last_5pixel_value = now_5pixel_value;
+					now_5pixel_value = pixel[i] + pixel[i-1] + pixel[i-2] + pixel[i-3] + pixel[i-4];
+					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
+
+					if(i == 69){
+						pixel_avg_difference = pixel_difference_sum/((74-i)/5);
+						if(pixel_difference_sum >= 1500){
+							pixel_avg_difference = 1;
+						}
+					}
+					if(pixel_avg_difference >= 10){
+						pixel_avg_difference = 1;
+					}
+
+					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
+						l_edge = i;
+						l_color_flag = white_black;
+						pixel_difference_sum = 0;
+						break;
+					}
+
+
+					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
+						l_edge = i;
+						l_color_flag = black_white;
+						pixel_difference_sum = 0;
+						break;
+					}
+					else if(i == 9){
+
+						if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 > 60000){
+							l_color_flag = half_white;
+							pixel_difference_sum = 0;
+							break;
+						}
+						else if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 < 35000){
+							l_color_flag = half_black;
+							pixel_difference_sum = 0;
+							break;
+						}
+						break;
+					}
+					pixel_avg_difference = pixel_difference_sum/((74 - i)/5);
+				}
+
+				if(center_line_flag == 0){
+					road_length = r_edge - l_edge;
+					center_line = (road_length)/2+l_edge;
+					center_line_flag++;
+				}
+
+				last_center_line_error = now_center_line_error;
+				now_center_line_error = center_line - ((r_edge - l_edge)/2+l_edge);         //if the error is positive, car need to turn right
+				center_line_error_change = now_center_line_error - last_center_line_error;
+				center_line_errorsum += now_center_line_error;
+				if(center_line_errorsum > 1000){
+					center_line_errorsum = 1000;
+				}
+				else if(center_line_errorsum < -1000){
+					center_line_errorsum = -1000;
+				}
+
+
+				turning_count += (int32_t)(now_center_line_error*turning_Kp + center_line_error_change*turning_Kd + center_line_errorsum*turning_Ki);
+
+
+
+				//
+				//				if(now_center_line_error >=0){
+				//					turn[0] = ccd_Kp*now_center_line_error + ccd_Kd*center_line_error_change;
+				//					turn[1] =
+				//				}
+				//
+			}
+			else if(yo == 5){
+				yo = 0;
+			}
+			if((int32_t)(t-pt7) >= 100){
+				pt7 = System::Time();
+				libsc::St7735r::Rect rect_;
+
+				if(l_color_flag == white_black){
+					if(r_color_flag == white_black){
+						rect_.x = 0;
+						rect_.y = 130;
+						rect_.w = l_edge;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(BLACK);
+
+						rect_.x = l_edge;
+						rect_.y = 130;
+						rect_.w = r_edge - l_edge;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(WHITE);
+
+						rect_.x = r_edge;
+						rect_.y = 130;
+						rect_.w = 128 - r_edge;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(BLACK);
+					}
+					else if(r_color_flag == half_white){
+						rect_.x = 0;
+						rect_.y = 130;
+						rect_.w = l_edge;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(BLACK);
+
+						rect_.x = l_edge;
+						rect_.y = 130;
+						rect_.w = 128 - l_edge;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(WHITE);
+					}
+				}
+				else if(l_color_flag == half_white){
+					if(r_color_flag == white_black){
+						rect_.x = 0;
+						rect_.y = 130;
+						rect_.w = r_edge;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(WHITE);
+
+						rect_.x = r_edge;
+						rect_.y = 130;
+						rect_.w = 128 - r_edge;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(BLACK);
+					}
+					else if(r_color_flag == half_white){
+						rect_.x = 0;
+						rect_.y = 130;
+						rect_.w = 128;
+						rect_.h = 16;
+						lcd.SetRegion(rect_);
+						lcd.FillColor(WHITE);
+					}
+				}
+			}
 
 		}
 	}
 
 
 
-
 }
+
 
 
 
