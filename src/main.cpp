@@ -488,153 +488,124 @@ int main()
 				int border_r = 0, border_l = 0, mid_point = 0;;
 
 
-				if(ccd.IsImageReady())
-				{
-//					System::DelayMs(5);
-					ccd.StartSample();
-					std::array<uint16_t, Tsl1401cl::kSensorW> Data = ccd.GetData();  // 0 - 127 is left to right from the view of CCD
-					uint32_t ccd_sum = 0;
+				ccd.StartSample();
+				while (!ccd.SampleProcess())
+				{}
+				pixel = ccd.GetData();
 
-					for(int i = 0; i < Tsl1401cl::kSensorW; i++){
-						Data[i] = (float)Data[i] * 80.0f / 65535.0f;
-						ccd_sum += Data[i];
+				now_5pixel_value = pixel[57] + pixel[58] + pixel[59] + pixel[60] + pixel[61];
+				for(int i=62; i < 118; i = i+5){
+					last_5pixel_value = now_5pixel_value;
+					now_5pixel_value = pixel[i] + pixel[i+1] + pixel[i+2] + pixel[i+3] + pixel[i+4];
+					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
+
+					if(i == 62){
+						pixel_avg_difference = pixel_difference_sum/((i-57)/5);
+						if(pixel_difference_sum >= 1500){
+							pixel_avg_difference = 1;
+						}
+
 					}
 
-//					St7735r::Rect rect_1, rect_2, rect_3, rect_4;
-//					for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-//						rect_1.x = i;
-//						rect_1.y = 0;
-//						rect_1.w = 1;
-//						rect_1.h = Data[i];
-//						rect_2.x = i;
-//						rect_2.y = Data[i];
-//						rect_2.w = 1;
-//						rect_2.h = 80 - Data[i];
-//						lcd.SetRegion(rect_1);
-//						lcd.FillColor(~0);
-//						lcd.SetRegion(rect_2);
-//						lcd.FillColor(0);
-//					}
-
-					uint16_t ccd_average = ccd_sum / Tsl1401cl::kSensorW;
-
-					if(ccd_average > 70)
-						ccd_average = 722;
-					else if(ccd_average < 35)
-						ccd_average = 35;
-					else
-						ccd_average = ccd_average + 3;
-
-					for(int i=0; i < Tsl1401cl::kSensorW; i++){
-						if(Data[i] < ccd_average)
-							Data[i] = 0;
-						else
-							Data[i] = 60;
+					if(pixel_avg_difference >= 10){
+						pixel_avg_difference = 1;
+					}
+					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
+						r_edge = i;
+						r_color_flag = white_black;
+						pixel_difference_sum = 0;
+						break;
 					}
 
-//					for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-//						rect_3.x = i;
-//						rect_3.y = 90;
-//						rect_3.w = 1;
-//						rect_3.h = Data[i];
-//						rect_4.x = i;
-//						rect_4.y = 90 + Data[i];
-//						rect_4.w = 1;
-//						rect_4.h = 60 - Data[i];
-//						lcd.SetRegion(rect_3);
-//						lcd.FillColor(~0);
-//						lcd.SetRegion(rect_4);
-//						lcd.FillColor(0);
-//					}
 
-//					if(Data[64] == 60){
-//						for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
-//						{
-//							if(Data[a] == 60)
-//								border_r = a;
-//							else
-//								break;
-//						}
-//
-//						for(b = b - 1; b >= 0; b--)
-//						{
-//							if(Data[b] == 60)
-//								border_l = b;
-//							else
-//								break;
-//						}
-//
-//
-//						while(border_r - border_l < 80)
-//						{
-//							for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
-//							{
-//								if(Data[a] == 60)
-//									border_r = a;
-//								else
-//									break;
-//							}
-//
-//							for(b = b - 1; b >= 0; b--)
-//							{
-//								if(Data[b] == 60)
-//									border_l = b;
-//								else
-//									break;
-//							}
-//						}
-//					}
-//
-//					else
-//					{
-//						if(mid_point > 64)
-//						{
-//							for(int i = 64; i < Tsl1401cl::kSensorW; i++)
-//							{
-//								if (Data[i] == 60)
-//								{
-//									border_l = i;
-//									border_r = Tsl1401cl::kSensorW;
-//									break;
-//								}
-//								else{
-//									border_l = i;
-//									border_r = i;
-//								}
-//							}
-//						}
-//
-//						else
-//						{
-//							for(int i = 63; i > 0; i--)
-//							{
-//								if (Data[i] == 60)
-//								{
-//									border_r = i;
-//									border_l = 0;
-//									break;
-//								}
-//								else{
-//									border_l = i;
-//									border_r = i;
-//								}
-//							}
-//						}
-//					}
+					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
+						r_edge = i;
+						r_color_flag = black_white;
+						pixel_difference_sum = 0;
+						break;
+					}
+					else if(i == 117){
+						if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 > 60000){
+							r_color_flag = half_white;
+							pixel_difference_sum = 0;
+							break;
+						}
+						else if((pixel[65]+pixel[75]+pixel[85]+pixel[95]+pixel[110]+pixel[122])/6 < 35000){
+							r_color_flag = half_black;
+							pixel_difference_sum = 0;
+							break;
+						}
+					}
+					pixel_avg_difference = pixel_difference_sum/((i-57)/5);
+				}
 
-					mid_point = (border_l + border_r) / 2;
-					float turn_error = Tsl1401cl::kSensorW / 2 - mid_point;
+				now_5pixel_value = pixel[65] + pixel[66] + pixel[67] + pixel[68] + pixel[69];
+				for(int i = 69; i > 8; i = i-5){
+					last_5pixel_value = now_5pixel_value;
+					now_5pixel_value = pixel[i] + pixel[i-1] + pixel[i-2] + pixel[i-3] + pixel[i-4];
+					pixel_difference_sum += (now_5pixel_value - last_5pixel_value)/5;
 
-//					if(turn_error > 0){
-//						turn[0] = 1 - turn_Kp * turn_error;
-//						if(turn[0] < 0)
-//							turn[0] = 0;
-//					}
-//					else{
-//						turn[1] = 1 - turn_Kp * turn_error;
-//						if(turn[1] < 0)
-//							turn[1] = 1;
-//					}
+					if(i == 69){
+						pixel_avg_difference = pixel_difference_sum/((74-i)/5);
+						if(pixel_difference_sum >= 1500){
+							pixel_avg_difference = 1;
+						}
+					}
+					if(pixel_avg_difference >= 10){
+						pixel_avg_difference = 1;
+					}
+
+					if((now_5pixel_value - last_5pixel_value)/5 < -150*aabbss(pixel_avg_difference)){
+						l_edge = i;
+						l_color_flag = white_black;
+						pixel_difference_sum = 0;
+						break;
+					}
+
+
+					else if((now_5pixel_value - last_5pixel_value)/5 > 150*aabbss(pixel_avg_difference)){
+						l_edge = i;
+						l_color_flag = black_white;
+						pixel_difference_sum = 0;
+						break;
+					}
+					else if(i == 9){
+
+						if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 > 60000){
+							l_color_flag = half_white;
+							pixel_difference_sum = 0;
+							break;
+						}
+						else if((pixel[64]+pixel[55]+pixel[45]+pixel[35]+pixel[20]+pixel[5])/6 < 35000){
+							l_color_flag = half_black;
+							pixel_difference_sum = 0;
+							break;
+						}
+						break;
+					}
+					pixel_avg_difference = pixel_difference_sum/((74 - i)/5);
+				}
+
+				if(center_line_flag == 0){
+					road_length = r_edge - l_edge;
+					center_line = (road_length)/2+l_edge;
+					center_line_flag++;
+				}
+
+				last_center_line_error = now_center_line_error;
+				now_center_line_error = center_line - ((r_edge - l_edge)/2+l_edge);         //if the error is positive, car need to turn right
+				center_line_error_change = now_center_line_error - last_center_line_error;
+				center_line_errorsum += now_center_line_error;
+				if(center_line_errorsum > 1000){
+					center_line_errorsum = 1000;
+				}
+				else if(center_line_errorsum < -1000){
+					center_line_errorsum = -1000;
+				}
+
+
+				turning_count += (int32_t)(now_center_line_error*turning_Kp + center_line_error_change*turning_Kd + center_line_errorsum*turning_Ki);
+
 
 				}
 
