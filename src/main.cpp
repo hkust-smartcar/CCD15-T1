@@ -834,8 +834,8 @@ int main()
 
 
 
-				motor_l.SetPower(abs(2.4988*speed_l + 31.4593));
-				motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
+				//				motor_l.SetPower(abs(2.4988*speed_l + 31.4593));
+				//				motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
 
 
 			}
@@ -1030,8 +1030,8 @@ int main()
 
 
 
-				motor_l.SetPower(abs(2.4988*speed_l + 31.4593));                        //data from graph, encoder--->power mapping
-				motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
+				//				motor_l.SetPower(abs(2.4988*speed_l + 31.4593));                        //data from graph, encoder--->power mapping
+				//				motor_r.SetPower(abs(2.38436*speed_r + 41.1278));
 
 
 			}
@@ -1046,7 +1046,7 @@ int main()
 
 
 			if(yo == 4 && blue_flag == 1){
-//				pt5 = System::Time();
+				//				pt5 = System::Time();
 				yo = 5;
 				pGrapher.sendWatchData();
 				blue_flag = 0;
@@ -1061,7 +1061,8 @@ int main()
 			}
 
 			//detect edge method***************
-			if((int32_t)(t-pt6) >= 40 && yo == 5){
+			if((int32_t)(t-pt6) >= 50 && yo == 5){
+				lincoln.Set(1);
 				pt6 = System::Time();
 				yo = 0;
 
@@ -1184,6 +1185,7 @@ int main()
 				turning_count += (int32_t)(now_center_line_error*turning_Kp + center_line_error_change*turning_Kd + center_line_errorsum*turning_Ki);
 
 
+				lincoln.Set(0);
 
 				//
 				//				if(now_center_line_error >=0){
@@ -1195,75 +1197,75 @@ int main()
 			else if(yo == 5){
 				yo = 0;
 			}
-			if((int32_t)(t-pt7) >= 100){
-				pt7 = System::Time();
-				libsc::St7735r::Rect rect_;
-
-				if(l_color_flag == white_black){
-					if(r_color_flag == white_black){
-						rect_.x = 0;
-						rect_.y = 130;
-						rect_.w = l_edge;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(BLACK);
-
-						rect_.x = l_edge;
-						rect_.y = 130;
-						rect_.w = r_edge - l_edge;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(WHITE);
-
-						rect_.x = r_edge;
-						rect_.y = 130;
-						rect_.w = 128 - r_edge;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(BLACK);
-					}
-					else if(r_color_flag == half_white){
-						rect_.x = 0;
-						rect_.y = 130;
-						rect_.w = l_edge;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(BLACK);
-
-						rect_.x = l_edge;
-						rect_.y = 130;
-						rect_.w = 128 - l_edge;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(WHITE);
-					}
-				}
-				else if(l_color_flag == half_white){
-					if(r_color_flag == white_black){
-						rect_.x = 0;
-						rect_.y = 130;
-						rect_.w = r_edge;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(WHITE);
-
-						rect_.x = r_edge;
-						rect_.y = 130;
-						rect_.w = 128 - r_edge;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(BLACK);
-					}
-					else if(r_color_flag == half_white){
-						rect_.x = 0;
-						rect_.y = 130;
-						rect_.w = 128;
-						rect_.h = 16;
-						lcd.SetRegion(rect_);
-						lcd.FillColor(WHITE);
-					}
-				}
-			}
+//			if((int32_t)(t-pt7) >= 100){
+//				pt7 = System::Time();
+//				libsc::St7735r::Rect rect_;
+//
+//				if(l_color_flag == white_black){
+//					if(r_color_flag == white_black){
+//						rect_.x = 0;
+//						rect_.y = 130;
+//						rect_.w = l_edge;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(BLACK);
+//
+//						rect_.x = l_edge;
+//						rect_.y = 130;
+//						rect_.w = r_edge - l_edge;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(WHITE);
+//
+//						rect_.x = r_edge;
+//						rect_.y = 130;
+//						rect_.w = 128 - r_edge;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(BLACK);
+//					}
+//					else if(r_color_flag == half_white){
+//						rect_.x = 0;
+//						rect_.y = 130;
+//						rect_.w = l_edge;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(BLACK);
+//
+//						rect_.x = l_edge;
+//						rect_.y = 130;
+//						rect_.w = 128 - l_edge;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(WHITE);
+//					}
+//				}
+//				else if(l_color_flag == half_white){
+//					if(r_color_flag == white_black){
+//						rect_.x = 0;
+//						rect_.y = 130;
+//						rect_.w = r_edge;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(WHITE);
+//
+//						rect_.x = r_edge;
+//						rect_.y = 130;
+//						rect_.w = 128 - r_edge;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(BLACK);
+//					}
+//					else if(r_color_flag == half_white){
+//						rect_.x = 0;
+//						rect_.y = 130;
+//						rect_.w = 128;
+//						rect_.h = 16;
+//						lcd.SetRegion(rect_);
+//						lcd.FillColor(WHITE);
+//					}
+//				}
+//			}
 
 		}
 	}
