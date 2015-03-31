@@ -203,6 +203,15 @@ int main()
 	float center_line_error_change = 0;
 	float road_length = 0;
 	float center_line_errorsum = 0;
+	float turning_Kp = 0;
+	float turning_Kd = 0;
+	float turning_Ki = 0;
+	int32_t turning_count = 0;
+	Byte l_edge = 0;
+	Byte r_edge = 0;
+	Byte l_color_flag = 0;
+	Byte r_color_flag = 0;
+	float moving_gain = 0;
 
 	St7735r::Config config1;
 	config1.is_revert = false;
