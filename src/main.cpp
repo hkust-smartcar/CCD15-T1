@@ -40,6 +40,11 @@
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0
 #define WHITE           0xFFFF
+#define white_black     0
+#define black_white     1
+#define half_black      2
+#define half_white      3
+#define aabbss(v)  ((v>0)? v : -v)
 
 char CCD;
 using namespace libsc;
@@ -212,6 +217,11 @@ int main()
 	Byte l_color_flag = 0;
 	Byte r_color_flag = 0;
 	float moving_gain = 0;
+	std::array<uint16_t,Tsl1401cl::kSensorW> pixel;
+	uint16_t now_5pixel_value = 0;
+	uint16_t last_5pixel_value = 0;
+	float pixel_difference_sum = 0;
+	float pixel_avg_difference = 0;
 
 	St7735r::Config config1;
 	config1.is_revert = false;
@@ -625,8 +635,6 @@ int main()
 
 
 				}
-
-			}
 
 
 
