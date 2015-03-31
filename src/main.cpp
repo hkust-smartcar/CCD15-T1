@@ -68,17 +68,17 @@ Mcg::Config Mcg::GetMcgConfig()
 float ideal_count_Kd = 0;
 float ideal_count_Kp = 0;
 float error_kd = 0;
-//float ic_Kp = 50;
-//float ic_Kd = 0.035;
+float ic_Kp = 50;
+float ic_Kd = 0.035;
 float gyro_Ki = 0;
 
 float turn_Kp = 0;
 float turn_Ki = 0;
 float turn_Kd = 0;
 
-float encoder_r_Kp = 1.85;     // Recommend 1.85
+float encoder_r_Kp = 1.92;     // Recommend 1.85
 float encoder_r_Ki = 0.0005;   // Recommend 0.0005
-float encoder_l_Kp = 1.85;     // Recommend 1.85
+float encoder_l_Kp = 1.82;     // Recommend 1.85
 float encoder_l_Ki = 0.0005;   // Recommend 0.0005
 float original_angle = 0;
 float new_original_angle = 0;
@@ -130,11 +130,11 @@ int main()
 	libutil::InitDefaultFwriteHandler(&bt);
 
 	RemoteVarManager::Var* ic_Kp = varmanager->Register("ic_Kp",RemoteVarManager::Var::Type::kReal);
-	RemoteVarManager::Var* ic_Kd = varmanager->Register("ic_Kd",RemoteVarManager::Var::Type::kReal);
+//	RemoteVarManager::Var* ic_Kd = varmanager->Register("ic_Kd",RemoteVarManager::Var::Type::kReal);
 //	RemoteVarManager::Var* speed = varmanager->Register("speed",RemoteVarManager::Var::Type::kInt);
 
-	printf("ic_Kp,real,0,50\n");
-	printf("ic_Kd,real,1,0\n");
+//	printf("ic_Kp,real,0,50\n");
+//	printf("ic_Kd,real,1,0\n");
 //	printf("speed,int,2,0\n");
 
 
@@ -293,7 +293,7 @@ int main()
 				ccd.SampleProcess();
 			}
 
-			if((int32_t)(t-pt1) >= 9  && yo==0){
+			if((int32_t)(t-pt1) >= 12  && yo==0){
 				//				//				lincoln.Turn();
 				pt1 = System::Time();
 				//
@@ -349,7 +349,7 @@ int main()
 //					angle_gain = 1100;
 
 				last_ideal_count = ideal_count;
-				ideal_count = (int32_t)(ic_Kp->GetReal() * now_angle_error * angle_gain + angle_gain * ic_Kd->GetReal() * angle_error_change / 0.003 - still_Ki * total_count_r);
+				ideal_count = (int32_t)(ic_Kp * now_angle_error * angle_gain + angle_gain * ic_Kd * angle_error_change / 0.003 - still_Ki * total_count_r);
 //				ideal_count = (int32_t)(0.2*last_ideal_count + 0.8*ideal_count);
 
 				if(now_angle_error > -0.2 && now_angle_error < 0.2)
@@ -424,7 +424,7 @@ int main()
 //					else if(ideal_count > 600 || ideal_count < -600)
 //						hehe = 40.0f;
 
-					power_r = (float)ideal_count + (float)ir_encoder_error * encoder_l_Kp + ir_encoder_errorsum * encoder_l_Ki;
+					power_r = (float)ideal_count + (float)ir_encoder_error * encoder_r_Kp + ir_encoder_errorsum * encoder_r_Ki;
 					power_l = (float)ideal_count + (float)il_encoder_error * encoder_l_Kp + il_encoder_errorsum * encoder_l_Ki;
 
 					speed_l = 0.54f * power_l + 11.0f;
@@ -518,12 +518,12 @@ int main()
 
 					uint16_t ccd_average = ccd_sum / Tsl1401cl::kSensorW;
 
-					if(ccd_average > 72)
-						ccd_average = 72;
-					else if(ccd_average < 15)
-						ccd_average = 15;
+					if(ccd_average > 70)
+						ccd_average = 722;
+					else if(ccd_average < 35)
+						ccd_average = 35;
 					else
-						ccd_average = ccd_average + 4;
+						ccd_average = ccd_average + 3;
 
 					for(int i=0; i < Tsl1401cl::kSensorW; i++){
 						if(Data[i] < ccd_average)
@@ -547,80 +547,80 @@ int main()
 //						lcd.FillColor(0);
 //					}
 
-					if(Data[64] == 60){
-						for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
-						{
-							if(Data[a] == 60)
-								border_r = a;
-							else
-								break;
-						}
-
-						for(b = b - 1; b >= 0; b--)
-						{
-							if(Data[b] == 60)
-								border_l = b;
-							else
-								break;
-						}
-
-
-						while(border_r - border_l < 80)
-						{
-							for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
-							{
-								if(Data[a] == 60)
-									border_r = a;
-								else
-									break;
-							}
-
-							for(b = b - 1; b >= 0; b--)
-							{
-								if(Data[b] == 60)
-									border_l = b;
-								else
-									break;
-							}
-						}
-					}
-
-					else
-					{
-						if(mid_point > 64)
-						{
-							for(int i = 64; i < Tsl1401cl::kSensorW; i++)
-							{
-								if (Data[i] == 60)
-								{
-									border_l = i;
-									border_r = Tsl1401cl::kSensorW;
-									break;
-								}
-								else{
-									border_l = i;
-									border_r = i;
-								}
-							}
-						}
-
-						else
-						{
-							for(int i = 63; i > 0; i--)
-							{
-								if (Data[i] == 60)
-								{
-									border_r = i;
-									border_l = 0;
-									break;
-								}
-								else{
-									border_l = i;
-									border_r = i;
-								}
-							}
-						}
-					}
+//					if(Data[64] == 60){
+//						for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
+//						{
+//							if(Data[a] == 60)
+//								border_r = a;
+//							else
+//								break;
+//						}
+//
+//						for(b = b - 1; b >= 0; b--)
+//						{
+//							if(Data[b] == 60)
+//								border_l = b;
+//							else
+//								break;
+//						}
+//
+//
+//						while(border_r - border_l < 80)
+//						{
+//							for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
+//							{
+//								if(Data[a] == 60)
+//									border_r = a;
+//								else
+//									break;
+//							}
+//
+//							for(b = b - 1; b >= 0; b--)
+//							{
+//								if(Data[b] == 60)
+//									border_l = b;
+//								else
+//									break;
+//							}
+//						}
+//					}
+//
+//					else
+//					{
+//						if(mid_point > 64)
+//						{
+//							for(int i = 64; i < Tsl1401cl::kSensorW; i++)
+//							{
+//								if (Data[i] == 60)
+//								{
+//									border_l = i;
+//									border_r = Tsl1401cl::kSensorW;
+//									break;
+//								}
+//								else{
+//									border_l = i;
+//									border_r = i;
+//								}
+//							}
+//						}
+//
+//						else
+//						{
+//							for(int i = 63; i > 0; i--)
+//							{
+//								if (Data[i] == 60)
+//								{
+//									border_r = i;
+//									border_l = 0;
+//									break;
+//								}
+//								else{
+//									border_l = i;
+//									border_r = i;
+//								}
+//							}
+//						}
+//					}
 
 					mid_point = (border_l + border_r) / 2;
 					float turn_error = Tsl1401cl::kSensorW / 2 - mid_point;
@@ -648,7 +648,7 @@ int main()
 			 *
 			 *
 			 */
-			if((int32_t)(t-pt0) >= 2  && yo == 8){
+			if((int32_t)(t-pt0) >= 5  && yo == 8){
 				//				lincoln.Turn();
 				pt3 = System::Time();
 
@@ -707,7 +707,7 @@ int main()
 //					angle_gain = 1100;
 
 				last_ideal_count = ideal_count;
-				ideal_count = (int32_t)(ic_Kp->GetReal() * now_angle_error * angle_gain + angle_gain * ic_Kd->GetReal() * angle_error_change / 0.003 - still_Ki * total_count_r);
+				ideal_count = (int32_t)(ic_Kp * now_angle_error * angle_gain + angle_gain * ic_Kd * angle_error_change / 0.003 - still_Ki * total_count_r);
 //				ideal_count = (int32_t)(0.2 * last_ideal_count + 0.8 * ideal_count);
 
 				if(now_angle_error > -0.2 && now_angle_error < 0.2)
@@ -782,7 +782,7 @@ int main()
 //					else if(ideal_count > 600 || ideal_count < -600)
 //						hehe = 40.0f;
 
-					power_r = (float)ideal_count + (float)ir_encoder_error * encoder_l_Kp + ir_encoder_errorsum * encoder_l_Ki;
+					power_r = (float)ideal_count + (float)ir_encoder_error * encoder_r_Kp + ir_encoder_errorsum * encoder_r_Ki;
 					power_l = (float)ideal_count + (float)il_encoder_error * encoder_l_Kp + il_encoder_errorsum * encoder_l_Ki;
 
 					speed_l = 0.54f * power_l + 11.0f;
@@ -873,7 +873,7 @@ int main()
 //				}
 
 
-				printf("%f, %d, %f, %f\n", output_angle, ideal_count, ic_Kp->GetReal(), ic_Kd->GetReal());
+//				printf("%f, %d, %f, %f\n", output_angle, ideal_count, ic_Kp->GetReal(), ic_Kd->GetReal());
 
 			}
 
