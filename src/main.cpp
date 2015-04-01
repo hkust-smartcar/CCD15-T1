@@ -58,11 +58,13 @@ int main()
 	lcd.Clear(0);
 	Timer::TimerInt t = 0, pt = t;
 
-	std::array<uint16_t, Tsl1401cl::kSensorW> Data;
+	std::array<short unsigned int, Tsl1401cl::kSensorW> Data;
 
 	ccd.StartSample();
 
 	while(true){
+		if (t != System::Time())
+		{
 		t = System::Time();
 		if(t - pt >= 100)
 		{
@@ -70,67 +72,68 @@ int main()
 
 			howard.Set(1);
 			ccd.StartSample();
-//			System::DelayMs(1);
-			while (!ccd.SampleProcess()){}
+			while (!ccd.SampleProcess())
+			{}
 			Data = ccd.GetData();
 
-			uint32_t sum = 0;
-
-			for(int i = 0; i < Tsl1401cl::kSensorW; i++){
-				Data[i] = Data[i] * 80 / 65535;
-				sum += Data[i];
-			}
-
-			uint16_t average = sum / Tsl1401cl::kSensorW;
-			if(average > 72)
-				average = 72;
-			else if(average < 35)
-				average = 35;
-			else
-				average = average + 3;
-
-			St7735r::Rect rect_1, rect_2, rect_3, rect_4;
-			for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-				rect_1.x = i;
-				rect_1.y = 0;
-				rect_1.w = 1;
-				rect_1.h = Data[i];
-				rect_2.x = i;
-				rect_2.y = Data[i];
-				rect_2.w = 1;
-				rect_2.h = 80 - Data[i];
-				lcd.SetRegion(rect_1);
-				lcd.FillColor(~0);
-				lcd.SetRegion(rect_2);
-				lcd.FillColor(0);
-			}
-
-			for(int i=0; i<Tsl1401cl::kSensorW; i++){
-				if(Data[i] < average)
-					Data[i] = 0;
-				else
-					Data[i] = 60;
-			}
-
-			for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-				rect_3.x = i;
-				rect_3.y = 90;
-				rect_3.w = 1;
-				rect_3.h = Data[i];
-				rect_4.x = i;
-				rect_4.y = 90 + Data[i];
-				rect_4.w = 1;
-				rect_4.h = 60 - Data[i];
-				lcd.SetRegion(rect_3);
-				lcd.FillColor(~0);
-				lcd.SetRegion(rect_4);
-				lcd.FillColor(0);
-			}
-
-			howard.Set(0);
+//			uint32_t sum = 0;
+//
+//			for(int i = 0; i < Tsl1401cl::kSensorW; i++){
+//				Data[i] = Data[i] * 80 / 65535;
+//				sum += Data[i];
+//			}
+//
+//			uint16_t average = sum / Tsl1401cl::kSensorW;
+//			if(average > 72)
+//				average = 72;
+//			else if(average < 35)
+//				average = 35;
+//			else
+//				average = average + 3;
+//
+//			St7735r::Rect rect_1, rect_2, rect_3, rect_4;
+//			for(int i = 0; i<Tsl1401cl::kSensorW; i++){
+//				rect_1.x = i;
+//				rect_1.y = 0;
+//				rect_1.w = 1;
+//				rect_1.h = Data[i];
+//				rect_2.x = i;
+//				rect_2.y = Data[i];
+//				rect_2.w = 1;
+//				rect_2.h = 80 - Data[i];
+//				lcd.SetRegion(rect_1);
+//				lcd.FillColor(~0);
+//				lcd.SetRegion(rect_2);
+//				lcd.FillColor(0);
+//			}
+//
+//			for(int i=0; i<Tsl1401cl::kSensorW; i++){
+//				if(Data[i] < average)
+//					Data[i] = 0;
+//				else
+//					Data[i] = 60;
+//			}
+//
+//			for(int i = 0; i<Tsl1401cl::kSensorW; i++){
+//				rect_3.x = i;
+//				rect_3.y = 90;
+//				rect_3.w = 1;
+//				rect_3.h = Data[i];
+//				rect_4.x = i;
+//				rect_4.y = 90 + Data[i];
+//				rect_4.w = 1;
+//				rect_4.h = 60 - Data[i];
+//				lcd.SetRegion(rect_3);
+//				lcd.FillColor(~0);
+//				lcd.SetRegion(rect_4);
+//				lcd.FillColor(0);
+//			}
+//
+//			howard.Set(0);
 		}
 		//		System::DelayMs(20);
 	}
+}
 }
 
 // LCD from right to left is 0 - 127;
