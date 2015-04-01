@@ -58,11 +58,13 @@ int main()
 	lcd.Clear(0);
 	Timer::TimerInt t = 0, pt = t;
 
+	std::array<uint16_t, Tsl1401cl::kSensorW> Data;
+
 	ccd.StartSample();
 
 	while(true){
 		t = System::Time();
-		if(t - pt >= 400)
+		if(t - pt >= 100)
 		{
 			pt = t;
 
@@ -70,10 +72,9 @@ int main()
 			ccd.StartSample();
 //			System::DelayMs(1);
 			while (!ccd.SampleProcess()){}
+			Data = ccd.GetData();
 
 			uint32_t sum = 0;
-
-			std::array<uint16_t, Tsl1401cl::kSensorW> Data = ccd.GetData();
 
 			for(int i = 0; i < Tsl1401cl::kSensorW; i++){
 				Data[i] = Data[i] * 80 / 65535;
