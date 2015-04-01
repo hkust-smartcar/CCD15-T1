@@ -293,7 +293,7 @@ int main()
 				ccd.SampleProcess();
 			}
 
-			if((int32_t)(t-pt1) >= 9  && yo==0){
+			if((int32_t)(t-pt1) >= 6  && yo==0){
 				//				//				lincoln.Turn();
 				pt1 = System::Time();
 				//
@@ -461,7 +461,7 @@ int main()
 
 			}
 
-			if((int32_t)(t-pt2) >= 2 && yo == 2){
+			if((int32_t)(t-pt2) >= 1 && yo == 2){
 //				howard.Set(1);
 				pt0 = System::Time();
 				yo = 8;
@@ -472,16 +472,16 @@ int main()
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
 
-				total_count_l += (float)count_l * 0.002;
-				total_count_r += (float)count_r * 0.002;
+				total_count_l += (float)count_l * 0.001;
+				total_count_r += (float)count_r * 0.001;
 
 				last_ir_encoder_error = ir_encoder_error;
 				ir_encoder_error = ideal_count - count_r;
 				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.002;
-				il_encoder_errorsum += (float)il_encoder_error * 0.002;
+				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
+				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
 
 				int a = 63, b = 64;
@@ -518,8 +518,8 @@ int main()
 
 					uint16_t ccd_average = ccd_sum / Tsl1401cl::kSensorW;
 
-					if(ccd_average > 70)
-						ccd_average = 722;
+					if(ccd_average > 72)
+						ccd_average = 72;
 					else if(ccd_average < 35)
 						ccd_average = 35;
 					else
@@ -648,7 +648,7 @@ int main()
 			 *
 			 *
 			 */
-			if((int32_t)(t-pt0) >= 2  && yo == 8){
+			if((int32_t)(t-pt0) >= 1  && yo == 8){
 				//				lincoln.Turn();
 				pt3 = System::Time();
 
@@ -665,11 +665,11 @@ int main()
 				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
-				total_count_l += (float)count_l * 0.002;
-				total_count_r += (float)count_r * 0.002;
+				total_count_l += (float)count_l * 0.001;
+				total_count_r += (float)count_r * 0.001;
 
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.002;
-				il_encoder_errorsum += (float)il_encoder_error * 0.002;
+				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
+				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
 				mpu6050.Update();
 
@@ -819,7 +819,7 @@ int main()
 			}
 
 
-			if((int32_t)(t-pt4) >= 2 && yo == 4){
+			if((int32_t)(t-pt4) >= 1 && yo == 4){
 				pt5 = System::Time();
 				yo =0;
 				encoder_r.Update();
@@ -828,16 +828,16 @@ int main()
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
 
-				total_count_l += (float)count_l * 0.002;
-				total_count_r += (float)count_r * 0.002;
+				total_count_l += (float)count_l * 0.001;
+				total_count_r += (float)count_r * 0.001;
 
 				last_ir_encoder_error = ir_encoder_error;
 				ir_encoder_error = ideal_count - count_r;
 				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.002;
-				il_encoder_errorsum += (float)il_encoder_error * 0.002;
+				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
+				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
 //				switch(turn_l->GetInt())
 //				{
