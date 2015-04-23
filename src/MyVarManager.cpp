@@ -14,6 +14,7 @@
 
 
 #include <libsc/system.h>
+#include <libsc/k60/ftdi_ft232r.h>
 #include <libbase/k60/sys_tick.h>
 #include <libsc/k60/jy_mcu_bt_106.h>
 

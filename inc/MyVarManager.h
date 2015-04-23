@@ -18,8 +18,8 @@
 #include <cxxabi.h>
 
 #include <libsc/system.h>
-#include <libbase/k60/sys_tick.h>
 #include <libsc/k60/ftdi_ft232r.h>
+#include <libbase/k60/sys_tick.h>
 #include <libsc/k60/jy_mcu_bt_106.h>
 
 using namespace libsc;
@@ -108,8 +108,6 @@ public:
 
 private:
 
-	JyMcuBt106						m_uart;
-
 	OnReceiveListener	m_origin_listener;
 
 	std::vector<ObjMng>				sharedObjMng;
@@ -119,6 +117,8 @@ private:
 	const Byte						rx_threshold;
 
 	std::vector<Byte>				rx_buffer;
+
+	JyMcuBt106						m_uart;
 
 	static bool listener(const std::vector<Byte> &bytes);
 
