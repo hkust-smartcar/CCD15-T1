@@ -5,28 +5,31 @@
 // *      Author: Howard
 // */
 //
-//#include <cstdio>
 //#include <libbase/k60/mcg.h>
-//#include <libsc/k60/led.h>
-//#include <libsc/k60/system.h>
-//#include <libsc/k60/ftdi_ft232r.h>
-//#include <libsc/k60/alternate_motor.h>
-//#include <libsc/k60/tower_pro_mg995.h>
-//#include <libsc/k60/mpu6050.h>
-//#include <libsc/k60/encoder.h>
-//#include <libsc/k60/dir_motor.h>
-//#include <libsc/k60/mma8451q.h>
+//#include <libsc/led.h>
+//#include <libsc/system.h>
+//#include <libsc/alternate_motor.h>
+//#include <libsc/tower_pro_mg995.h>
+//#include <libsc/mpu6050.h>
+//#include <libsc/encoder.h>
+//#include <libsc/dir_motor.h>
+//#include <libsc/mma8451q.h>
 //#include <libsc/device_h/mma8451q.h>
-//#include <libsc/k60/linear_ccd.h>
-//#include "libsc/k60/st7735r.h"
-//#include <libsc/k60/lcd_console.h>
-//#include <libsc/k60/lcd_typewriter.h>
+//#include <cstdio>
+//#include <math.h>
+//#include <libsc/tsl1401cl.h>
+//#include "libsc/st7735r.h"
+//#include <libsc/lcd_console.h>
+//#include <libsc/lcd_typewriter.h>
 //#include <libbase/k60/adc.h>
-//#include <libsc/k60/joystick.h>
-//#include <libsc/k60/dir_encoder.h>
+//#include <libsc/joystick.h>
+//#include <libsc/dir_encoder.h>
 //#include <libutil/string.h>
-//#include <libutil/kalman_filter.h>
 //#include <libsc/k60/jy_mcu_bt_106.h>
+//#include <libsc/ab_encoder.h>
+//#include <libutil/remote_var_manager.h>
+//#include <kalman.h>
+//#include <libsc/button.h>
 //
 //#ifndef INC_CAR_H_
 //#define INC_CAR_H_
@@ -38,22 +41,57 @@
 //using namespace libutil;
 //
 //
+//#include <libbase/k60/mcg.h>
+//#include <libsc/led.h>
+//#include <libsc/system.h>
+//#include <libsc/alternate_motor.h>
+//#include <libsc/tower_pro_mg995.h>
+//#include <libsc/mpu6050.h>
+//#include <libsc/encoder.h>
+//#include <libsc/dir_motor.h>
+//#include <libsc/mma8451q.h>
+//#include <libsc/device_h/mma8451q.h>
+//#include <cstdio>
+//#include <math.h>
+//#include <libsc/tsl1401cl.h>
+//#include "libsc/st7735r.h"
+//#include <libsc/lcd_console.h>
+//#include <libsc/lcd_typewriter.h>
+//#include <libbase/k60/adc.h>
+//#include <libsc/joystick.h>
+//#include <libsc/dir_encoder.h>
+//#include <libutil/string.h>
+//#include <libsc/k60/jy_mcu_bt_106.h>
+//#include <libsc/ab_encoder.h>
+//#include <libutil/remote_var_manager.h>
+//#include <kalman.h>
+//#include <libsc/button.h>
+//
+//using namespace libsc;
+//using namespace libsc::k60;
+//using namespace libutil;
+//
 //class Car{
 //public:
 //	Car();
-//	float trust_accel, trust_old_accel;
 //
+//private:
 //	JyMcuBt106 bt;
 //	Mpu6050 mpu6050;
 //	Joystick joy;
 //	AlternateMotor motor_r;
 //	AlternateMotor motor_l;
-//	DirEncoder encoder_l;
-//	DirEncoder encoder_r;
-//	LinearCcd ccd;
+//	AbEncoder encoder_l;
+//	AbEncoder encoder_r;
+//	Tsl1401cl ccd;
 //	Adc PowerTest;
-//
-//private:
+//	St7735r lcd;
+//	Button button0;
+//	Button button1;
+//	libsc::Led led0;
+//	libsc::Led led1;
+//	double kalman_value[2] = {0.1, -1.0};
+//	Kalman acc;
 //
 //
 //};

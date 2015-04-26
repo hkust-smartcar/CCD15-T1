@@ -13,21 +13,50 @@
 //
 //#include <app.h>
 //
-//float App::GetOriginalAngle(){
+//
+//#include "app.h"
+//
+//
+//
+//void App::EncoderCommon()
+//{
+//	m_car.encoder_r.Update();
+//	m_car.encoder_l.Update();
+//
+//	count_r = (int32_t)(-m_car.encoder_r.GetCount());
+//	count_l = (int32_t)(m_car.encoder_l.GetCount());
+//
+//    if(turn[0] >= 0.8 && turn [1] >= 0.8)
+//    	m_speed = (count_l + count_r)/ 2;
+//    else if(turn[0] == 1)
+//    	m_speed = count_l;
+//    else if(turn[1] == 1)
+//    	m_speed = count_r;
+//
+//    speed_error[1] = speed_error[0];
+//    speed_error[0] = ideal_speed - m_speed;
+//    speed_error[2] = (speed_error[0] - speed_error[1]) / 0.001f;
+//
+//    original_angle = raw_angle - is_Kp * speed_error[0] - is_Kd * speed_error[2];
+//}
+//
+//float App::GetOriginalAngle()
+//{
 //	t = System::Time();
 //	pt = t;
 //	while(1){
 //		t = System::Time();
 //		m_car.mpu6050.Update();
 //		accel = m_car.mpu6050.GetAccel();
-//		original_angle = accel[0]*57.29578;
+//		raw_angle = - accel[0] * 57.29578;
 //		if(t-pt <0)
 //			pt=0;
-//		if((t-pt)>=2000)
-//			return original_angle;
+//		if((int)(t-pt) >= 2000)
+//			return raw_angle;
 //	}
 //
 //}
+//
 //
 //
 //
@@ -37,13 +66,19 @@
 //
 //	accel = m_car.mpu6050.GetAccel();
 //	omega = m_car.mpu6050.GetOmega();
+//	accel[0] = -accel[0];
 //
-//	float last_accel_angle = accel_angle;
-//	accel_angle = accel[0]*57.29578;
-//	accel_angle = m_car.trust_old_accel * last_accel_angle + (1 - trust_old_accel) * accel_angle;
+//	raw_accel = m_car.mpu6050.GetAccel();
+//	raw_accel_angle = -raw_accel[0] * 57.29578;
+//
+//	double temp = 0;
+//	m_car.acc.Filtering(&temp, (double)accel[0], 0);
+//	accel[0] = temp;
+//
+//	accel_angle = accel[0] * 57.29578;
 //
 //	float last_gyro_angle = gyro_angle;
-//	gyro_angle += (-1) * omega[1] * 0.005 + m_car.trust_accel * (accel_angle - gyro_angle);
+//	gyro_angle += omega[1] * 0.003 + trust_accel * (accel_angle - gyro_angle);
 //}
 //
 //
@@ -54,50 +89,7 @@
 //
 //
 //
-//int App::DeadZoneTesting(int &dead_value_l, int &dead_value_r)
-//{
-//	while(1){
-//		m_car.motor_l.SetClockwise(0);
-//		m_car.motor_r.SetClockwise(0);
-//		m_car.motor_l.SetPower(dead_value_l);
-//		m_car.motor_r.SetPower(dead_value_r);
-//		m_car.encoder_l.Update();
-//		m_car.encoder_r.Update();
-//		System::DelayMs(10);
-//		m_car.encoder_l.Update();
-//		m_car.encoder_r.Update();
-//		if(m_car.encoder_l.GetCount())
-//			dead_value_l -= 3;
-//		if(m_car.encoder_r.GetCount())
-//			dead_value_r -= 3;
-//		if(m_car.encoder_l.GetCount() == 0 && m_car.encoder_r.GetCount() ==0)
-//		{
-//			while(1){
-//				m_car.motor_l.SetPower(dead_value_l);
-//				m_car.motor_r.SetPower(dead_value_r);
-//				m_car.encoder_l.Update();
-//				m_car.encoder_r.Update();
-//				System::DelayMs(10);
-//				m_car.encoder_l.Update();
-//				m_car.encoder_r.Update();
-//				count_l = m_car.encoder_l.GetCount();
-//				count_r = -m_car.encoder_r.GetCount();
-//				if(count_l <= 0)
-//					dead_value_l += 3;
-//				if(count_r <= 0)
-//					dead_value_r += 3;
-//				if(count_l > 0 && count_l > 0)
-//				{
-//					m_car.motor_l.SetPower(0);
-//					m_car.motor_r.SetPower(0);
-//					count_l = 0;
-//					count_r = 0;
-//					return 0;
-//				}
-//			}
-//		}
-//	}
-//}
+//
 //
 //
 //
@@ -107,22 +99,15 @@
 //	angle_error[0] = original_angle - output_angle;
 //	angle_error[2] =  angle_error[0] - angle_error[1];      // angle_error_change = angle_error[0] -last_angle_error;
 //
-//	int angle_gain = 1;
-//	if(angle_error[0] > 4 || angle_error[0] < -4)
-//		angle_gain = 2;
-//	else if(angle_error[0] > 7 || angle_error[0] < -6)
-//		angle_gain = 25;
-//	else if(angle_error[0] > 10 || angle_error[0] < -8)
-//		angle_gain = 200;
-//	else if(angle_error[0] > 16 || angle_error[0] < -14)
-//		angle_gain = 400;
-//
 //	ideal_count[1] = ideal_count[0];
-//	ideal_count[0] = (int32_t)(ic_Kp * angle_error[0] * angle_gain + angle_gain * ic_Kd * angle_error[2] / 0.003 - still_Ki * total_count_r);
-//	ideal_count[0] = (int32_t)(0.2*ideal_count[1] + 0.8*ideal_count[0]);
+//	ideal_count[0] = (int32_t)(ic_Kp * angle_error[0] + ic_Kd * angle_error[2] / 0.003);
+//
+//	if(angle_error[0] > -0.1 && angle_error[0] < 0.1)
+//		ideal_count[0] = 0;
 //
 //	angle_error[1] = angle_error[0];
 //}
+//
 //
 //void App::Balance_PID()
 //{
@@ -131,17 +116,9 @@
 //	GetIdealCount();
 //}
 //
+//
 //void App::GetEncoderValues()
 //{
-//	m_car.encoder_r.Update();
-//	m_car.encoder_l.Update();
-//
-//	count_r = (int32_t)(-m_car.encoder_r.GetCount());
-//	count_l = (int32_t)(m_car.encoder_l.GetCount());
-//
-//	//	total_count_l += (float)count_l * 0.003;
-//	//	total_count_r += (float)count_r * 0.003;
-//
 //	sign[1] = sign[0];
 //	if(ideal_count[0] > 0)
 //		sign[0] = 0;
@@ -149,7 +126,6 @@
 //		sign[0] = 1;
 //	else if(ideal_count[0] ==0)
 //		sign[0] = 2;
-//
 //
 //	if(sign[0] == 2){
 //		m_car.motor_l.SetPower(0);
@@ -170,15 +146,11 @@
 //
 //
 //		encoder_error_change[0] = encoder_error[0] -encoder_error[1];      //il_encoder_error_change = il_encoder_error -last_il_encoder_error;
-//		encoder_error_change[2] = encoder_error[2] -encoder_error[3];      //ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
+//		encoder_error_change[1] = encoder_error[2] -encoder_error[3];      //ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
 //
-//		encoder_error_change[2] = 0.8f * encoder_error_change[2] + 0.2f * encoder_error_change[3];        // ir_encoder_error_change = 0.8 * ir_encoder_error_change + 0.2 * last_ir_encoder_error_change;
-//		encoder_error_change[0] = 0.8f * encoder_error_change[0] + 0.2f * encoder_error_change[1];        // il_encoder_error_change = 0.8 * il_encoder_error_change + 0.2 * last_il_encoder_error_change;
-//
-//		encoder_error_change[1] = encoder_error_change[0];        // last_il_encoder_error_change = il_encoder_error -last_il_encoder_error;
-//		encoder_error_change[3] = encoder_error_change[2];        // last_ir_encoder_error_change = ir_encoder_error -last_ir_encoder_error;
 //	}
 //}
+//
 //
 //
 //void App::SetSpeed()
@@ -193,24 +165,6 @@
 //
 //	speed[1] = (int32_t)((float)(encoder_error[2] *encoder_r_Kp * encoder_gain) + encoder_gain * encoder_error_change[2] * encoder_r_Kd / 0.003f);
 //	speed[0] = (int32_t)((float)(encoder_error[0] *encoder_l_Kp * encoder_gain) + encoder_gain * encoder_error_change[0] * encoder_l_Kd / 0.003f);
-//
-//	if(speed[0] > 900 && sign[0] == 0)
-//		speed[0] = 900;
-//	else if(speed[0] < 0 && sign[0] ==0)
-//		speed[0] = 0;
-//	else if(speed[0] > 0 && sign[0] ==1)
-//		speed[0] = 0;
-//	else if(speed[0] < -900 && sign[0] ==1)
-//		speed[0] = -900;
-//
-//	if(speed[1] > 900 && sign[0] ==0)
-//		speed[1] = 900;
-//	else if(speed[1] < 0 && sign[0] ==0)
-//		speed[1] = 0;
-//	else if(speed[1] > 0 && sign[0] ==1)
-//		speed[1] = 0;
-//	else if(speed[1] < -900 && sign[0] ==1)
-//		speed[1] = -900;
 //
 //	speed[1] = speed[1]*turn[1];
 //	speed[0] = speed[0]*turn[0];

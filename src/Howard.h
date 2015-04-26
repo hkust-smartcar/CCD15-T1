@@ -67,20 +67,20 @@ Mcg::Config Mcg::GetMcgConfig()
 
 
 float ic_Kp = 30;                  // Recommend 30
-float ic_Kd = 0.2;               // Recommend 0.2
+float ic_Kd = 0.0008;               // Recommend 0.0001
 
-float is_Kp = 0;                  // Recommend
-float is_Ki = 0;
-float is_Kd = 0;
+float is_Kp = 0.05;                  // Recommend 0.05
+//float is_Ki = 0;
+//float is_Kd = 0;
 
-//float turn_Kp = 0;         // Recommend around 0.018
+//float turn_Kp = 0.018;         // Recommend around 0.018
 //float turn_Ki = 0;
 //float turn_Kd = 0;
 
-float encoder_r_Kp = 2.25;     // Recommend 2
-float encoder_r_Ki = 0.08;   // Recommend 0.08
-float encoder_l_Kp = 1.6;     // Recommend 2
-float encoder_l_Ki = 0.08;   // Recommend 0.08
+float encoder_r_Kp = 1.3;     // Recommend 1.1
+float encoder_r_Ki = 0.003;   // Recommend 0.003
+float encoder_l_Kp = 1.1;     // Recommend 1.1
+float encoder_l_Ki = 0.003;   // Recommend 0.003
 float original_angle = 0;
 float new_original_angle = 0;
 float turn[2] = { 1, 1 };
@@ -119,7 +119,7 @@ int main()
 	Timer::TimerInt pt = t;
 	pt = System::Time();
 
-	RemoteVarManager* varmanager = new RemoteVarManager(3);
+	RemoteVarManager* varmanager = new RemoteVarManager(4);
 
 	//	Initalize the BT module
 	JyMcuBt106::Config bt_config;
@@ -137,12 +137,12 @@ int main()
 	RemoteVarManager::Var* is_Kp = varmanager->Register("is_Kp",RemoteVarManager::Var::Type::kReal);
 	RemoteVarManager::Var* is_Kd = varmanager->Register("is_Kd",RemoteVarManager::Var::Type::kReal);
 	RemoteVarManager::Var* ideal_speed = varmanager->Register("ideal_speed",RemoteVarManager::Var::Type::kReal);
+	RemoteVarManager::Var* turn_Kp = varmanager->Register("turn_Kp",RemoteVarManager::Var::Type::kReal);
 
 	printf("is_Kp,real,0,0\n");
 	printf("is_Kd,real,1,0\n");
 	printf("ideal_speed,real,2,0\n");
-
-
+	printf("turn_Kp,real,3,0\n");
 
 
 
@@ -341,12 +341,12 @@ int main()
 				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
-			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
+//			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
 			    	speed = (count_l + count_r)/ 2;
-			    else if(turn[0] == 1)
-			    	speed = count_l;
-			    else if(turn[1] == 1)
-			    	speed = count_r;
+//			    else if(turn[0] == 1)
+//			    	speed = count_l;
+//			    else if(turn[1] == 1)
+//			    	speed = count_r;
 
 				last_speed_error = speed_error;
 				speed_error = ideal_speed->GetReal() - speed;
@@ -384,11 +384,9 @@ int main()
 
 
 				last_ideal_count = ideal_count;
-				ideal_count = (int32_t)(ic_Kp * now_angle_error  + ic_Kd * angle_error_change / 0.003 - still_Ki * total_count_r);
+				ideal_count = (int32_t)(ic_Kp * now_angle_error  + ic_Kd * angle_error_change / 0.03 - still_Ki * total_count_r);
 //				ideal_count = (int32_t)(0.2*last_ideal_count + 0.8*ideal_count);
 
-				if(now_angle_error > -0.2 && now_angle_error < 0.2)
-					ideal_count = 0;
 			}
 
 
@@ -409,16 +407,16 @@ int main()
 				total_count_l += (float)count_l * 0.001;
 				total_count_r += (float)count_r * 0.001;
 
-			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
+//			    if(turn[0] >= 0.9 && turn [1] >= 0.9)
 			    	speed = (count_l + count_r)/ 2;
-			    else if(turn[0] == 1)
-			    	speed = count_l;
-			    else if(turn[1] == 1)
-			    	speed = count_r;
+//			    else if(turn[0] == 1)
+//			    	speed = count_l;
+//			    else if(turn[1] == 1)
+//			    	speed = count_r;
 
 			    last_speed_error = speed_error;
 			    speed_error = ideal_speed->GetReal() - speed;
-			    speed_error_change = (speed_error - last_speed_error) / 0.001f;
+			    speed_error_change = (speed_error - last_speed_error);
 
 			    original_angle = raw_angle - is_Kp->GetReal() * speed_error - is_Kd->GetReal() * speed_error_change;
 
@@ -459,8 +457,8 @@ int main()
 					power_r = (float)ideal_count + (float)ir_encoder_error * encoder_r_Kp + ir_encoder_errorsum * encoder_r_Ki;
 					power_l = (float)ideal_count + (float)il_encoder_error * encoder_l_Kp + il_encoder_errorsum * encoder_l_Ki;
 
-					speed_l = 1.45751f * power_l + 33.62192f;
-					speed_r = 1.38485f * power_r + 72.15344f;
+					speed_l = 1.65479f * power_l + 51.2958f;
+					speed_r = 1.90774f * power_r + 53.8525f;
 
 					if(speed_l > 900 && sign ==0){
 						speed_l = 900;
@@ -508,12 +506,12 @@ int main()
 				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
-			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
+//			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
 			    	speed = (count_l + count_r)/ 2;
-			    else if(turn[0] == 1)
-			    	speed = count_l;
-			    else if(turn[1] == 1)
-			    	speed = count_r;
+//			    else if(turn[0] == 1)
+//			    	speed = count_l;
+//			    else if(turn[1] == 1)
+//			    	speed = count_r;
 
 				last_speed_error = speed_error;
 				speed_error = ideal_speed->GetReal() - speed;
@@ -643,16 +641,16 @@ int main()
 				turn[0] = 1;
 				turn[1] = 1;
 
-//				if(turn_error > 0){
-//					turn[0] = 1 - turn_Kp->GetReal() * turn_error;
-//					if(turn[0] < 0)
-//						turn[0] = 0;
-//				}
-//				else{
-//					turn[1] = 1 + turn_Kp->GetReal() * turn_error;
-//					if(turn[1] < 0)
-//						turn[1] = 0;
-//				}
+				if(turn_error > 0){
+					turn[0] = 1 - turn_Kp->GetReal() * turn_error;
+					if(turn[0] < 0)
+						turn[0] = 0;
+				}
+				else{
+					turn[1] = 1 + turn_Kp->GetReal() * turn_error;
+					if(turn[1] < 0)
+						turn[1] = 0;
+				}
 
 
 				if(print_data){
@@ -686,29 +684,29 @@ int main()
 				encoder_r.Update();
 				encoder_l.Update();
 
-				count_r = (int32_t)(-encoder_r.GetCount());
-				count_l = (int32_t)(encoder_l.GetCount());
+				count_r = (int32_t)(-encoder_r.GetCount() / 2);
+				count_l = (int32_t)(encoder_l.GetCount() / 2);
 
 				last_ir_encoder_error = ir_encoder_error;
 				ir_encoder_error = ideal_count - count_r;
 				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
-				total_count_l += (float)count_l * 0.002;
-				total_count_r += (float)count_r * 0.002;
+				total_count_l += (float)count_l * 0.001;
+				total_count_r += (float)count_r * 0.001;
 
-			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
+//			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
 			    	speed = (count_l + count_r)/ 2;
-			    else if(turn[0] == 1)
-			    	speed = count_l;
-			    else if(turn[1] == 1)
-			    	speed = count_r;
+//			    else if(turn[0] == 1)
+//			    	speed = count_l;
+//			    else if(turn[1] == 1)
+//			    	speed = count_r;
 
 				last_speed_error = speed_error;
 				speed_error = ideal_speed->GetReal() - speed;
 
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.002;
-				il_encoder_errorsum += (float)il_encoder_error * 0.002;
+				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
+				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
 				mpu6050.Update();
 
@@ -742,11 +740,8 @@ int main()
 
 
 				last_ideal_count = ideal_count;
-				ideal_count = (int32_t)(ic_Kp * now_angle_error  + ic_Kd * angle_error_change / 0.003 - still_Ki * total_count_r);
+				ideal_count = (int32_t)(ic_Kp * now_angle_error  + ic_Kd * angle_error_change / 0.03 - still_Ki * total_count_r);
 //				ideal_count = (int32_t)(0.2*last_ideal_count + 0.8*ideal_count);
-
-				if(now_angle_error > -0.2 && now_angle_error < 0.2)
-					ideal_count = 0;
 
 			}
 
@@ -774,16 +769,16 @@ int main()
 				total_count_l += (float)count_l * 0.001;
 				total_count_r += (float)count_r * 0.001;
 
-			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
+//			    if(turn[0] >= 0.8 && turn [1] >= 0.8)
 			    	speed = (count_l + count_r)/ 2;
-			    else if(turn[0] == 1)
-			    	speed = count_l;
-			    else if(turn[1] == 1)
-			    	speed = count_r;
+//			    else if(turn[0] == 1)
+//			    	speed = count_l;
+//			    else if(turn[1] == 1)
+//			    	speed = count_r;
 
 			    last_speed_error = speed_error;
 			    speed_error = ideal_speed->GetReal() - speed;
-			    speed_error_change = (speed_error - last_speed_error) / 0.001f;
+			    speed_error_change = (speed_error - last_speed_error);
 
 			    original_angle = raw_angle - is_Kp->GetReal() * speed_error - is_Kd->GetReal() * speed_error_change;
 
@@ -818,12 +813,12 @@ int main()
 					last_il_encoder_error = il_encoder_error;
 					il_encoder_error = ideal_count - count_l;
 
-				    if(turn[0] >= 0.8 && turn [1] >= 0.8)
+//				    if(turn[0] >= 0.8 && turn [1] >= 0.8)
 				    	speed = (count_l + count_r)/ 0.002;
-				    else if(turn[0] == 1)
-				    	speed = count_l / 0.001;
-				    else if(turn[1] == 1)
-				    	speed = count_r / 0.001;
+//				    else if(turn[0] == 1)
+//				    	speed = count_l / 0.001;
+//				    else if(turn[1] == 1)
+//				    	speed = count_r / 0.001;
 
 					last_speed_error = speed_error;
 					speed_error = ideal_speed->GetReal() - speed;
@@ -834,8 +829,8 @@ int main()
 					power_r = (float)ideal_count + (float)ir_encoder_error * encoder_r_Kp + ir_encoder_errorsum * encoder_r_Ki;
 					power_l = (float)ideal_count + (float)il_encoder_error * encoder_l_Kp + il_encoder_errorsum * encoder_l_Ki;
 
-					speed_l = 1.45751f * power_l + 33.62192f;
-					speed_r = 1.38485f * power_r + 72.15344f;
+					speed_l = 1.65479f * power_l + 51.2958f;
+					speed_r = 1.90774f * power_r + 53.8525f;
 
 					if(speed_l > 900 && sign == 0){
 						speed_l = 900;
@@ -896,7 +891,7 @@ int main()
 				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
 				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
-				printf("%f, %f, %f, %f, %f, %f\n", output_angle, original_angle, ideal_speed->GetReal(), speed, is_Kp->GetReal(), is_Kd->GetReal());
+				printf("%f, %f, %f, %f, %f, %f, %f\n",raw_angle, original_angle, ideal_speed->GetReal(), speed, is_Kp->GetReal(), is_Kd->GetReal(), turn_Kp->GetReal());
 
 			}
 
