@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <vector>
+
 #include <libbase/k60/mcg.h>
 #include <libsc/led.h>
 #include <libsc/system.h>
@@ -528,12 +529,12 @@ int main()
 	//		uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
 	//		FtdiFt232r fu(uart_config);
 
-	//		JyMcuBt106::Config uart_config;
-	//		uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
-	//		uart_config.rx_irq_threshold = 7;
-	//		uart_config.is_rx_irq_threshold_percentage = false;
-	//		uart_config.tx_buf_size = 50;
-	//		JyMcuBt106 fu(uart_config);
+//			JyMcuBt106::Config uart_config;
+//			uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
+//			uart_config.rx_irq_threshold = 7;
+//			uart_config.is_rx_irq_threshold_percentage = false;
+//			uart_config.tx_buf_size = 50;
+//			JyMcuBt106 fu(uart_config);
 
 	//		while(1);
 	//	 Initialize other things as necessary...
