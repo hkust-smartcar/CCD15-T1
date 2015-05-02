@@ -87,6 +87,7 @@ float encoder_r_Kp = 1.1;     // Recommend 1.1
 float encoder_r_Ki = 0.003;   // Recommend 0.003
 float encoder_l_Kp = 1.1;     // Recommend 1.1
 float encoder_l_Ki = 0.003;   // Recommend 0.003
+
 float original_angle = 0;
 float new_original_angle = 0;
 float turn[2] = { 1, 1 };
@@ -94,9 +95,11 @@ float still_Ki = 0.000;
 float ratio_old = 0;
 float ratio_new = 1-ratio_old;
 int32_t first_count = 0;
+
 float trust_accel = 0.02;
 float trust_old_accel = 0;
 float trust_new_accel = 1- trust_old_accel;
+
 float power_l = 0.0f;
 float power_r = 0.0f;
 float turn_error = 0;

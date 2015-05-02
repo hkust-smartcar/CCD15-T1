@@ -88,22 +88,22 @@ void ReceiveListener(const Byte *bytes, const size_t size)
 float ideal_count_Kd = 0;
 float ideal_count_Kp = 0;
 float error_kd = 0;
-float ic_Kd = 0.6;      //9.1
+float ic_Kd = 0.0008;      //9.1
 float ic_Kp = 0;
-float ic_Kp_const = 2.9;    //2.51
-float moving_gain = 39.6;      //2.7
+float ic_Kp_const = 30.0;    //2.51
+float moving_gain = 0;      //2.7
 float ic_Ki = 0;
 float mg = 0;
 
 float gyro_Ki = 0;
 //float encoder_Kp = 204;
 //float encoder_Kd = 81;
-float encoder_r_Kp = 5.32;      //18.53   8.05v  //21.73       31         7.79V
+float encoder_r_Kp = 1.1;      //18.53   8.05v  //21.73       31         7.79V
 float encoder_r_Kd = 0;       //2.01
-float encoder_r_Ki = 0;
-float encoder_l_Kp = 2.8;    //22.05   8.05v    //19.05                          28.9          7.76V
+float encoder_r_Ki = 0.003;
+float encoder_l_Kp = 1.1;    //22.05   8.05v    //19.05                          28.9          7.76V
 float encoder_l_Kd = 0;      //0.68
-float encoder_l_Ki = 0;
+float encoder_l_Ki = 0.003;
 
 float turning_Kp = 0;
 float turning_Kd = 0;
@@ -112,6 +112,10 @@ int32_t turning_count = 0;
 
 float isKp = 0;
 float isKd = 0;
+
+double kalman_value[2] = {0.1, -1.0};
+Kalman acc(0.001f, kalman_value, 0, 1);
+float howard_accel = 0;
 
 float original_angle = 0;           //-12.24
 float new_original_angle = 0;
@@ -529,12 +533,12 @@ int main()
 	//		uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
 	//		FtdiFt232r fu(uart_config);
 
-//			JyMcuBt106::Config uart_config;
-//			uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
-//			uart_config.rx_irq_threshold = 7;
-//			uart_config.is_rx_irq_threshold_percentage = false;
-//			uart_config.tx_buf_size = 50;
-//			JyMcuBt106 fu(uart_config);
+	//			JyMcuBt106::Config uart_config;
+	//			uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
+	//			uart_config.rx_irq_threshold = 7;
+	//			uart_config.is_rx_irq_threshold_percentage = false;
+	//			uart_config.tx_buf_size = 50;
+	//			JyMcuBt106 fu(uart_config);
 
 	//		while(1);
 	//	 Initialize other things as necessary...
@@ -756,44 +760,24 @@ int main()
 	//graph testing variable
 
 
-	//	pGrapher.addWatchedVar(&ideal_count, "1");
-	//	pGrapher.addWatchedVar(&turning_Kp, "1");
-	//
-	//	pGrapher.addWatchedVar(&ideal_count, "2");
-	//	pGrapher.addWatchedVar(&turning_Kd, "3");
-	//	pGrapher.addWatchedVar(&turning_Ki, "4");
-	//		pGrapher.addWatchedVar(&ic_Kd, "5");
-	//	pGrapher.addWatchedVar(&ic_Ki, "5");
-
-
-
-	//	pGrapher.addWatchedVar(&ic_Kd, "4");
-	//	pGrapher.addWatchedVar(&encoder_l_Kp, "4");
-	//	pGrapher.addWatchedVar(&encoder_l_Kd, "5");
-
-	//
-
-
-	//			pGrapher.addWatchedVar(&omegasum,"5");
-
-	pGrapher.addWatchedVar(&ideal_count,"1");
-	pGrapher.addWatchedVar(&count_l,"2");
-	pGrapher.addWatchedVar(&count_r,"3");
+	pGrapher.addWatchedVar(&ideal_count);
+	pGrapher.addWatchedVar(&count_l);
+	pGrapher.addWatchedVar(&count_r);
 
 	//	pGrapher.addWatchedVar(&moving_gain,"4");
 	//	pGrapher.addWatchedVar(&ic_Kp_const,"5");
 	//	pGrapher.addWatchedVar(&ic_Kd,"6");
 
 
-	pGrapher.addWatchedVar(&encoder_l_Kp,"4");
-	pGrapher.addWatchedVar(&encoder_r_Kp,"5");
-//	pGrapher.addWatchedVar(&gyro_angle,"6");
-//	pGrapher.addWatchedVar(&accel_angle,"7");
-//	pGrapher.addWatchedVar(&original_angle,"8");
+	pGrapher.addWatchedVar(&encoder_l_Kp);
+	pGrapher.addWatchedVar(&encoder_r_Kp);
+	//	pGrapher.addWatchedVar(&gyro_angle,"6");
+	//	pGrapher.addWatchedVar(&accel_angle,"7");
+	//	pGrapher.addWatchedVar(&original_angle,"8");
 
 
 
-
+	pGrapher.addSharedVar(&encoder_l_Kp,"yoyo");
 
 
 
@@ -880,6 +864,24 @@ int main()
 				//				pt1 = t;
 				//				yo = 1;
 
+				if(get_sample_flag == 0){                  //to get pixel in 12ms period
+					get_sample_flag = 1;
+				}
+				else if(get_sample_flag ==1){
+					get_sample_flag =2;
+				}
+				else if(get_sample_flag ==2){
+					ccd.StartSample();
+					while (!ccd.SampleProcess())
+					{}
+					pixel = ccd.GetData();
+					get_sample_flag = 0;
+				}
+
+
+
+
+
 				encoder_r.Update();
 				encoder_l.Update();
 
@@ -939,8 +941,9 @@ int main()
 				speed_r = (int32_t)(ideal_count + (int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
 				speed_l = (int32_t)(ideal_count + (int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
 
-				speed_l = 1.45751*speed_l;
-				speed_r = 1.38485*speed_r;
+				speed_l = 1.65479f*speed_l;
+				speed_r = 1.90774f*speed_r;
+
 
 				if(speed_l > 1000 && sign ==1){
 					speed_l = 1000;
@@ -980,8 +983,8 @@ int main()
 
 
 
-				motor_l.SetPower(abs(speed_l) + 60.62192);                 //2.4988,42
-				motor_r.SetPower(abs(speed_r) + 95.15344);                //2.38436,72.15344
+				motor_l.SetPower(abs(speed_l) + 51.2958f);                 //2.4988,42
+				motor_r.SetPower(abs(speed_r) + 53.8525f);                //2.38436,72.15344
 
 				//				lincoln.Set(0);
 			}
@@ -1013,7 +1016,14 @@ int main()
 				omega = mpu6050.GetOmega();
 
 				last_accel_angle = accel_angle;
-				accel_angle = -1*accel[0]*57.29578;
+				accel_angle = -1*accel[0]*rad_to_degree;
+
+
+//                testing howard's kaman filter
+				double temp = 0;
+				acc.Filtering(&temp, (double)accel[0], 0);
+				howard_accel = -1*rad_to_degree*(float)temp;
+
 				//				accel_angle = asin(accel[0])*57.29578;
 
 				if(moving_accel_flag == 0){
@@ -1090,7 +1100,7 @@ int main()
 
 
 
-//				original_angle = now_travel_speed_error + isKp*now_travel_speed_error + isKd*travel_speed_error_change;
+				//				original_angle = now_travel_speed_error + isKp*now_travel_speed_error + isKd*travel_speed_error_change;
 
 				last_angle_error = now_angle_error;
 				now_angle_error =   output_angle - original_angle;
@@ -1136,19 +1146,7 @@ int main()
 
 				//				pt1 = t;
 				//				yo = 3;
-				if(get_sample_flag == 0){                  //to get pixel in 12ms period
-					get_sample_flag = 1;
-				}
-				else if(get_sample_flag ==1){
-					get_sample_flag =2;
-				}
-				else if(get_sample_flag ==2){
-					ccd.StartSample();
-					while (!ccd.SampleProcess())
-					{}
-					pixel = ccd.GetData();
-					get_sample_flag = 0;
-				}
+
 
 
 
@@ -1211,8 +1209,9 @@ int main()
 				speed_r = (int32_t)(ideal_count + (int32_t)(ir_encoder_error *encoder_r_Kp) + (int32_t)(ir_encoder_error_change * encoder_r_Kd) + ir_encoder_errorsum*encoder_r_Ki);
 				speed_l = (int32_t)(ideal_count + (int32_t)(il_encoder_error *encoder_l_Kp) + (int32_t)(il_encoder_error_change * encoder_l_Kd) + il_encoder_errorsum*encoder_l_Ki);
 
-				speed_l = 1.45751*speed_l;
-				speed_r = 1.38485*speed_r;
+				speed_l = 1.65479f*speed_l;
+				speed_r = 1.90774f*speed_r;
+
 
 				if(speed_l > 1000 && sign ==1){
 					speed_l = 1000;
@@ -1252,8 +1251,9 @@ int main()
 
 
 
-				motor_l.SetPower(abs(speed_l) + 60.62192);                 //2.4988,42              33
-				motor_r.SetPower(abs(speed_r) + 95.15344);                //2.38436,72.15344         60
+				motor_l.SetPower(abs(speed_l) + 51.2958f);                 //2.4988,42
+				motor_r.SetPower(abs(speed_r) + 53.8525f);                //2.38436,72.15344
+
 
 				//				lincoln.Set(0);
 
