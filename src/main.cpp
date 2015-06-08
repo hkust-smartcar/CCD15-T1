@@ -167,14 +167,6 @@ int main()
 	accel_config.i2c_master_ptr = mpu6050.GetI2cMaster();
 	Mma8451q mma8451q(accel_config);
 
-
-	//	Mma8451q::Config accel_config;
-	//	//sensitivity of accelerometer
-	//	accel_config.id = 0;
-	//	accel_config.scl_pin = Pin::Name::kPtb0;
-	//	accel_config.sda_pin = Pin::Name::kPtb1;
-	//	Mma8451q myAccel(accel_config);
-
 	double R[2] = {0.01, -1};
 
 	Kalman Kalman_l(0.0001, R, 0, 1);
