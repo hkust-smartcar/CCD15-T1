@@ -2,7 +2,7 @@
  * MyVarManager.h
  *
  * Author: PeterLau
- * Version: 2.9.0
+ * Version: 3.0.0
  *
  * Copyright (c) 2014-2015 HKUST SmartCar Team
  * Refer to LICENSE for details
@@ -13,6 +13,7 @@
 // TODO: enable following preprocessor command
 //#ifdef LIBSC_USE_UART
 
+#include <functional>
 #include <vector>
 #include <typeinfo>
 #include <string.h>
@@ -99,11 +100,11 @@ public:
 	}
 
 	template<typename ObjType>
-	void addWatchedVar(ObjType *watchedObj)
+	void addWatchedVar(ObjType *watchedObj, std::string s)
 	{
 		if (!isStarted)
 		{
-			ObjMng newObj(watchedObj, sizeof(*watchedObj), TypeId::getTypeId(*watchedObj), "");
+			ObjMng newObj(watchedObj, sizeof(*watchedObj), TypeId::getTypeId(*watchedObj), s);
 			watchedObjMng.push_back(newObj);
 		}
 	}

@@ -2,7 +2,7 @@
  * MyVarManager.cpp
  *
  * Author: PeterLau
- * Version: 2.9.0
+ * Version: 3.0.0
  *
  * Copyright (c) 2014-2015 HKUST SmartCar Team
  * Refer to LICENSE for details
@@ -68,8 +68,8 @@ FtdiFt232r::Config MyVarManager::get232UartConfig(const uint8_t id)
 MyVarManager::MyVarManager(void)
 :
 	rx_threshold(7),
-	m_uart(get106UartConfig(0)),
-	isStarted(false)
+	isStarted(false),
+	m_uart(get106UartConfig(0))
 {
 	m_pd_instance = this;
 	System::Init();
