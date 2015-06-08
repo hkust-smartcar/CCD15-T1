@@ -78,8 +78,9 @@ Mcg::Config Mcg::GetMcgConfig()
 }
 
 
-float ic_Kp = 30;                  // Recommend 30
-float ic_Kd = 0.0001;               // Recommend 0.0001
+
+float ic_Kp = 20;                   // Recommend 50
+float ic_Kd = 35;            	    // Recommend 45
 
 float is_Kp = 0.00;                  // Recommend 0.05
 float is_Ki = 0;
@@ -92,10 +93,12 @@ float speed_error_sum_max = 0;
 //float turn_Ki = 0;
 //float turn_Kd = 0;
 
-float encoder_r_Kp = 1.3;     // Recommend 1.1
-float encoder_r_Ki = 0.0;   // Recommend 0.003
-float encoder_l_Kp = 4.6;     // Recommend 1.1
-float encoder_l_Ki = 0.0;   // Recommend 0.003
+float encoder_r_Kp = 1.2;        // Recommend 2
+float encoder_r_Ki = 0.0;   // Recommend 0.0008
+float encoder_r_Kd = 0.0;
+float encoder_l_Kp = 2;        // Recommend 2
+float encoder_l_Ki = 0.00;   // Recommend 0.0008
+float encoder_l_Kd = 0.0;
 
 float turn[2] = { 1, 1 };
 float turn_Kp = 0.1;
@@ -261,12 +264,12 @@ int main()
 	//	RemoteVarManager* varmanager = new RemoteVarManager(4);
 
 	//	Initalize the BT module
-	//	JyMcuBt106::Config uart_config;
-	//	uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
-	//	uart_config.rx_irq_threshold = 7;
-	//	uart_config.is_rx_irq_threshold_percentage = false;
-	//	uart_config.tx_buf_size = 50;
-	//	JyMcuBt106 fu(uart_config);
+		JyMcuBt106::Config uart_config;
+		uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
+		uart_config.rx_irq_threshold = 7;
+		uart_config.is_rx_irq_threshold_percentage = false;
+		uart_config.tx_buf_size = 50;
+		JyMcuBt106 fu(uart_config);
 
 
 	//	FtdiFt232r::Config uart_config;
@@ -302,33 +305,37 @@ int main()
 	float angle_accel = 0;
 	float angle_accel_const = 10;
 
-	MyVarManager pGrapher;
-	//graph testing variable
-
-
-	//	pGrapher.addWatchedVar(&ideal_count_l,"ideal_count_l");
-	//	pGrapher.addWatchedVar(&ideal_count_r,"ideal_count_r");
-	//	pGrapher.addWatchedVar(&count_l,"count_l");
-	//	pGrapher.addWatchedVar(&count_r,"count_r");
-
-	pGrapher.addWatchedVar(&gyro_angle,"gyro_angle");
-	pGrapher.addWatchedVar(&angle_accel,"angle_accel");
-	pGrapher.addWatchedVar(&balance_count,"balance_count");
-
-
-
-
-
-	//	pGrapher.addWatchedVar(&encoder_l_Kp);
-	//	pGrapher.addWatchedVar(&encoder_r_Kp);
-
-
-
-
-
-	//	pGrapher.addSharedVar(&angle_accel_const,"angle_accel_const");
-	//	pGrapher.addSharedVar(&ic_Kp,"ic_Kp");
-	//	pGrapher.addSharedVar(&ic_Kd,"ic_Kd");
+//	MyVarManager pGrapher;
+//	//graph testing variable
+//
+//
+//	//	pGrapher.addWatchedVar(&ideal_count_l,"ideal_count_l");
+//	//	pGrapher.addWatchedVar(&ideal_count_r,"ideal_count_r");
+//	//	pGrapher.addWatchedVar(&count_l,"count_l");
+//	//	pGrapher.addWatchedVar(&count_r,"count_r");
+//
+//	pGrapher.addWatchedVar(&gyro_angle,"gyro_angle");
+//	pGrapher.addWatchedVar(&accel_angle,"accel_angle");
+//	pGrapher.addWatchedVar(&balance_count,"balance_count");
+//	pGrapher.addWatchedVar(&speed_count,"speed_count");
+//
+//
+//
+//
+//
+//
+//	//	pGrapher.addWatchedVar(&encoder_l_Kp);
+//	//	pGrapher.addWatchedVar(&encoder_r_Kp);
+//
+//
+//
+//
+//
+//	//	pGrapher.addSharedVar(&angle_accel_const,"angle_accel_const");
+//		pGrapher.addSharedVar(&ic_Kp,"ic_Kp");
+//		pGrapher.addSharedVar(&ic_Kd,"ic_Kd");
+//		pGrapher.addSharedVar(&is_Kp,"is_Kp");
+//			pGrapher.addSharedVar(&is_Kd,"is_Kd");
 
 
 
@@ -361,12 +368,12 @@ int main()
 
 
 
-	//	Mma8451q::Config accel_config;
-	//	//sensitivity of accelerometer
-	//	accel_config.id = 0;
-	//	accel_config.scl_pin = Pin::Name::kPtb0;
-	//	accel_config.sda_pin = Pin::Name::kPtb1;
-	//	Mma8451q myAccel(accel_config);
+	Mma8451q::Config accel_config;
+	accel_config.id = 0;
+	accel_config.power_mode = Mma8451q::Config::PowerMode::kLowNoiseLowPower;
+	accel_config.output_data_rate = Mma8451q::Config::OutputDataRate::k200Hz;
+	accel_config.i2c_master_ptr = mpu6050.GetI2cMaster();
+	Mma8451q mma8451q(accel_config);
 
 	double R[2] = {0.01, -1};
 
@@ -378,13 +385,14 @@ int main()
 	joycon.is_active_low = true;
 	Joystick joy(joycon);
 
+
 	DirMotor::Config l_motor;
-	l_motor.id = 0;
-	DirMotor motor_r(l_motor);
+	l_motor.id = 1;
+	DirMotor motor_l(l_motor);
 
 	DirMotor::Config r_motor;
-	r_motor.id = 1;
-	DirMotor motor_l(r_motor);
+	r_motor.id = 0;
+	DirMotor motor_r(r_motor);
 
 	AbEncoder::Config enconfig;
 	enconfig.id = 0;
@@ -435,10 +443,10 @@ int main()
 		mpu6050.Update();
 		System::DelayMs(4);
 		accel = mpu6050.GetAccel();
-		raw_angle = -accel[0]*57.29578;
+		raw_angle = -accel[0]*57.2958;
 
 		t = System::Time();
-		if((t-pt)>=2000)
+		if((t-pt)>=3000)
 			break;
 	}
 
@@ -488,11 +496,11 @@ int main()
 
 
 				if(blue_flag == 0){
-					pGrapher.sendWatchData();
-					//					int16_t n = sprintf(buffer, "%.3f \n",omega[0]);
-					//					fu.SendBuffer((Byte*)buffer,n);
-					//					memset(buffer, 0, n);
-					//					pGrapher.sendWatchData();
+//					pGrapher.sendWatchData();
+										int16_t n = sprintf(buffer, "%.3f \n",output_angle);
+										fu.SendBuffer((Byte*)buffer,n);
+										memset(buffer, 0, n);
+//										pGrapher.sendWatchData();
 
 					blue_flag = 1;
 				}
@@ -533,18 +541,20 @@ int main()
 
 
 				mpu6050.Update();
+				mma8451q.Update();
 
-				accel = mpu6050.GetAccel();
+				accel = mma8451q.GetAccel();
 				omega = mpu6050.GetOmega();
-				//				accel[0] = -accel[0];
 
-				//				raw_accel = mpu6050.GetAccel();
-				//				raw_accel_angle = -raw_accel[0] * 57.29578;
+				// qian qing angle reduce
+
+				raw_accel = mma8451q.GetAccel();
+				raw_accel_angle = raw_accel[1] * 57.29578;
 				last_accel_angle = accel_angle;
 				double temp = 0;
-				acc.Filtering(&temp, (double)accel[0], 0);
-				accel[0] = temp;
-				accel_angle = accel[0]*57.29578;
+				acc.Filtering(&temp, (double)accel[1], 0);
+				accel[1] = temp;
+				accel_angle = (float)(accel[1]*57.29578);
 				//				accel_angle = trust_old_accel*last_accel_angle +trust_new_accel*accel_angle;
 
 				//				if(moving_accel_flag == 0){
@@ -680,11 +690,11 @@ int main()
 				}
 				speed_error_change = (speed_error - last_speed_error);
 
-				original_angle = raw_angle - is_Kp * speed_error - is_Kd * speed_error_change;
-				//				speed_count = is_Kp * speed_error + is_Kd * speed_error_change + is_Ki * speed_error_sum;
+				//				original_angle = raw_angle - is_Kp * speed_error - is_Kd * speed_error_change;
+				speed_count = is_Kp * speed_error + is_Kd * speed_error_change + is_Ki * speed_error_sum;
 
-				if(raw_angle - output_angle > 20 || raw_angle - output_angle < -20){
-					original_angle = raw_angle;
+				if(raw_angle - output_angle > 10 || raw_angle - output_angle < -10){
+					speed_count = 0;
 				}
 
 
@@ -713,16 +723,16 @@ int main()
 				//				turn_count_r = (balance_count) * turn[1];
 
 
-								balance_error_ratio = aabbss(now_angle_error)/balance_divider;
-								speed_error_ratio = aabbss(speed_error)/speed_divider;
-								turn_error_ratio = aabbss(turn_error)/turn_divider;
-
-								balance_ratio = balance_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
-				//				speed_ratio = speed_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
-								turn_ratio = turn_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
-
-												ideal_count_l = balance_ratio * balance_count + turn_ratio * turn_count_l;
-												ideal_count_r = balance_ratio * balance_count + turn_ratio * turn_count_r;
+				//				balance_error_ratio = aabbss(now_angle_error)/balance_divider;
+				//				speed_error_ratio = aabbss(speed_error)/speed_divider;
+				//				turn_error_ratio = aabbss(turn_error)/turn_divider;
+				//
+				//				balance_ratio = balance_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
+				//				//				speed_ratio = speed_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
+				//				turn_ratio = turn_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
+				//
+				//				ideal_count_l = balance_ratio * balance_count + turn_ratio * turn_count_l;
+				//				ideal_count_r = balance_ratio * balance_count + turn_ratio * turn_count_r;
 				//
 				//
 				//				combine_count_l = ideal_count_l;
@@ -732,8 +742,8 @@ int main()
 				//				balance_contribution = balance_ratio * balance_count;
 				//				turn_contribution_l = turn_ratio * turn_count_l;
 				//				turn_contribution_r = turn_ratio * turn_count_r;
-				ideal_count_l = balance_count;
-				ideal_count_r = balance_count;
+				ideal_count_l = balance_count + speed_count;
+				ideal_count_r = balance_count + speed_count;
 
 
 				//				ideal_count_l = ideal_count_l * turn[0];
@@ -844,8 +854,8 @@ int main()
 
 
 
-				speed_r = (aabbss(speed_r) + 50.89f);
-				speed_l = (aabbss(speed_l) + 28.04f);
+				speed_r = (aabbss(speed_r) + 40.0f);
+				speed_l = (aabbss(speed_l) + 41.38f);
 
 
 
@@ -864,8 +874,8 @@ int main()
 					speed_r = -500;
 				}
 
-				motor_l.SetPower((int16_t)(speed_l));
-				motor_r.SetPower((int16_t)(speed_r));
+//				motor_l.SetPower((int16_t)(speed_l));
+//				motor_r.SetPower((int16_t)(speed_r));
 
 
 
@@ -879,11 +889,11 @@ int main()
 				pt0 = System::Time();
 				yo = 8;
 
-				encoder_r.Update();
-				encoder_l.Update();
-
-				count_r = (int16_t)(-encoder_r.GetCount());
-				count_l = (int16_t)(encoder_l.GetCount());
+				//				encoder_r.Update();
+				//				encoder_l.Update();
+				//
+				//				count_r = (int16_t)(-encoder_r.GetCount());
+				//				count_l = (int16_t)(encoder_l.GetCount());
 
 
 
@@ -1171,20 +1181,22 @@ int main()
 				//				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
 				//				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
+
 				mpu6050.Update();
+				mma8451q.Update();
 
-				accel = mpu6050.GetAccel();
+				accel = mma8451q.GetAccel();
 				omega = mpu6050.GetOmega();
-				//				accel[0] = -accel[0];
 
-				//				raw_accel = mpu6050.GetAccel();
-				//				raw_accel_angle = -raw_accel[0] * 57.29578;
+				// qian qing angle reduce
+
+				raw_accel = mma8451q.GetAccel();
+				raw_accel_angle = raw_accel[1] * 57.29578;
 				last_accel_angle = accel_angle;
 				double temp = 0;
-				acc.Filtering(&temp, (double)accel[0], 0);
-				accel[0] = temp;
-				accel_angle = accel[0]*57.29578;
-				//				accel_angle = trust_old_accel*last_accel_angle +trust_new_accel*accel_angle;
+				acc.Filtering(&temp, (double)accel[1], 0);
+				accel[1] = temp;
+				accel_angle = (float)(accel[1]*57.29578);				//				accel_angle = trust_old_accel*last_accel_angle +trust_new_accel*accel_angle;
 
 				//				if(moving_accel_flag == 0){
 				//					moving_accel_1 = accel_angle;
@@ -1308,11 +1320,11 @@ int main()
 				}
 				speed_error_change = (speed_error - last_speed_error);
 
-				original_angle = raw_angle - is_Kp * speed_error - is_Kd * speed_error_change;
-				//				speed_count = is_Kp * speed_error + is_Kd * speed_error_change + is_Ki * speed_error_sum;
+				//				original_angle = raw_angle - is_Kp * speed_error - is_Kd * speed_error_change;
+				speed_count = is_Kp * speed_error + is_Kd * speed_error_change + is_Ki * speed_error_sum;
 
-				if(raw_angle - output_angle > 20 || raw_angle - output_angle < -20){
-					original_angle = raw_angle;
+				if(raw_angle - output_angle > 10 || raw_angle - output_angle < -10){
+					speed_count = 0;
 				}
 
 
@@ -1344,13 +1356,13 @@ int main()
 				//				balance_error_ratio = aabbss(now_angle_error)/balance_divider;
 				//				speed_error_ratio = aabbss(speed_error)/speed_divider;
 				//				turn_error_ratio = aabbss(turn_error)/turn_divider;
-
+				//
 				//				balance_ratio = balance_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
-				////				speed_ratio = speed_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
+				//				//				speed_ratio = speed_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
 				//				turn_ratio = turn_error_ratio/(balance_error_ratio + speed_error_ratio + turn_error_ratio);
-
-				//								ideal_count_l = balance_ratio * balance_count + turn_ratio * turn_count_l;
-				//								ideal_count_r = balance_ratio * balance_count + turn_ratio * turn_count_r;
+				//
+				//				ideal_count_l = balance_ratio * balance_count + turn_ratio * turn_count_l;
+				//				ideal_count_r = balance_ratio * balance_count + turn_ratio * turn_count_r;
 				//
 				//
 				//				combine_count_l = ideal_count_l;
@@ -1360,8 +1372,8 @@ int main()
 				//				balance_contribution = balance_ratio * balance_count;
 				//				turn_contribution_l = turn_ratio * turn_count_l;
 				//				turn_contribution_r = turn_ratio * turn_count_r;
-				ideal_count_l = balance_count;
-				ideal_count_r = balance_count;
+				ideal_count_l = balance_count + speed_count;
+				ideal_count_r = balance_count + speed_count;
 
 
 				//				ideal_count_l = ideal_count_l * turn[0];
@@ -1402,7 +1414,7 @@ int main()
 
 
 
-				//
+
 				//				if(moving_power_flag == 0){
 				//					moving_ideal_count_l_1 = ideal_count_l;
 				//					moving_ideal_count_r_1 = ideal_count_r;
@@ -1472,8 +1484,8 @@ int main()
 
 
 
-				speed_r = (aabbss(speed_r) + 50.89f);
-				speed_l = (aabbss(speed_l) + 28.04f);
+				speed_r = (aabbss(speed_r) + 40.0f);
+				speed_l = (aabbss(speed_l) + 41.38f);
 
 
 
@@ -1492,8 +1504,9 @@ int main()
 					speed_r = -500;
 				}
 
-				motor_l.SetPower((int16_t)(speed_l));
-				motor_r.SetPower((int16_t)(speed_r));
+//				motor_l.SetPower((int16_t)(speed_l));
+//				motor_r.SetPower((int16_t)(speed_r));
+
 
 
 
