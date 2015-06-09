@@ -82,12 +82,12 @@ Mcg::Config Mcg::GetMcgConfig()
 float ic_Kp = 20;                   // Recommend 50
 float ic_Kd = 35;            	    // Recommend 45
 
-float is_Kp = 0.00;                  // Recommend 0.05
-float is_Ki = 0;
+float is_Kp = 0.3;                  // Recommend 0.05
+float is_Ki = 0.3;
 float is_Kd = 0;
 float speed_error_sum = 0;
 float speed_count = 0;
-float speed_error_sum_max = 0;
+float speed_error_sum_max = 100;
 
 //float turn_Kp = 0.018;         // Recommend around 0.018
 //float turn_Ki = 0;
@@ -107,6 +107,8 @@ float turn_count_l = 0;
 float turn_count_r = 0;
 float combine_count_l =0;
 float combine_count_r = 0;
+int mid_point = 0;
+uint16_t ccd_average = 0;
 
 float balance_ratio = 1.0f;
 float balance_error_ratio = 0;
@@ -129,7 +131,7 @@ float ratio_old = 0;
 float ratio_new = 1-ratio_old;
 int16_t first_count = 0;
 
-float trust_accel = 0.01;
+float trust_accel = 0.03;
 float trust_old_accel = 0;
 float trust_new_accel = 1- trust_old_accel;
 
@@ -140,7 +142,7 @@ float turn_error = 0;
 int16_t count_l =0;
 int16_t count_r =0;
 
-int16_t mid_point = 0;
+
 
 float lincoln1 = 0;
 
@@ -159,6 +161,7 @@ float last_gyro_angle = original_angle;
 float gyro_angle = original_angle;
 float last_accel_angle = original_angle;
 float output_angle = 0;            //karmen filtered
+float gyro_in_time = 0.0034;
 
 float total_count_l =0;
 float total_count_r =0;
@@ -264,12 +267,12 @@ int main()
 	//	RemoteVarManager* varmanager = new RemoteVarManager(4);
 
 	//	Initalize the BT module
-		JyMcuBt106::Config uart_config;
-		uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
-		uart_config.rx_irq_threshold = 7;
-		uart_config.is_rx_irq_threshold_percentage = false;
-		uart_config.tx_buf_size = 50;
-		JyMcuBt106 fu(uart_config);
+	//	JyMcuBt106::Config uart_config;
+	//	uart_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
+	//	uart_config.rx_irq_threshold = 7;
+	//	uart_config.is_rx_irq_threshold_percentage = false;
+	//	uart_config.tx_buf_size = 50;
+	//	JyMcuBt106 fu(uart_config);
 
 
 	//	FtdiFt232r::Config uart_config;
@@ -295,7 +298,7 @@ int main()
 	//********************************************************************************************************************
 	Byte blue_flag =0;
 
-	float ideal_speed = 0;
+	float ideal_speed = 10;
 	float is_Kp = 0;
 	float speed = 0;
 	float speed_contribution = 0;
@@ -304,39 +307,43 @@ int main()
 	float turn_contribution_r = 0;
 	float angle_accel = 0;
 	float angle_accel_const = 10;
+	float ha_accel = 0;
+	int16_t border_r = 0;
+	int16_t border_l = 0;
+	MyVarManager pGrapher;
+	//graph testing variable
 
-//	MyVarManager pGrapher;
-//	//graph testing variable
-//
-//
-//	//	pGrapher.addWatchedVar(&ideal_count_l,"ideal_count_l");
-//	//	pGrapher.addWatchedVar(&ideal_count_r,"ideal_count_r");
-//	//	pGrapher.addWatchedVar(&count_l,"count_l");
-//	//	pGrapher.addWatchedVar(&count_r,"count_r");
-//
-//	pGrapher.addWatchedVar(&gyro_angle,"gyro_angle");
-//	pGrapher.addWatchedVar(&accel_angle,"accel_angle");
-//	pGrapher.addWatchedVar(&balance_count,"balance_count");
-//	pGrapher.addWatchedVar(&speed_count,"speed_count");
-//
-//
-//
-//
-//
-//
-//	//	pGrapher.addWatchedVar(&encoder_l_Kp);
-//	//	pGrapher.addWatchedVar(&encoder_r_Kp);
-//
-//
-//
-//
-//
-//	//	pGrapher.addSharedVar(&angle_accel_const,"angle_accel_const");
-//		pGrapher.addSharedVar(&ic_Kp,"ic_Kp");
-//		pGrapher.addSharedVar(&ic_Kd,"ic_Kd");
-//		pGrapher.addSharedVar(&is_Kp,"is_Kp");
-//			pGrapher.addSharedVar(&is_Kd,"is_Kd");
 
+	//	pGrapher.addWatchedVar(&ideal_count_l,"ideal_count_l");
+	//	pGrapher.addWatchedVar(&count_r,"count_r");
+	//	pGrapher.addWatchedVar(&ir_encoder_error,"ir_encoder_error");
+	pGrapher.addWatchedVar(&speed_error_sum,"speed_error_sum");
+	pGrapher.addWatchedVar(&accel_angle,"accel_angle");
+	pGrapher.addWatchedVar(&gyro_angle,"gyro_angle");
+	pGrapher.addWatchedVar(&border_l,"border_l");
+	pGrapher.addWatchedVar(&speed_count,"speed_count");
+	pGrapher.addWatchedVar(&balance_count,"balance_count");
+	pGrapher.addWatchedVar(&border_r,"border_r");
+
+
+
+
+
+
+	//	pGrapher.addWatchedVar(&encoder_l_Kp);
+	//	pGrapher.addWatchedVar(&encoder_r_Kp);
+
+
+
+
+
+	pGrapher.addSharedVar(&speed_error_sum_max,"speed_error_sum_max");
+	pGrapher.addSharedVar(&is_Ki,"is_Ki");
+	pGrapher.addSharedVar(&is_Kp,"is_Kp");
+	pGrapher.addSharedVar(&is_Kd,"is_Kd");
+	pGrapher.addSharedVar(&ideal_speed,"ideal_speed");
+	pGrapher.addSharedVar(&turn_Kp,"turn_Kp");
+	pGrapher.addSharedVar(&turn_Kd,"turn_Kd");
 
 
 	//		pGrapher.Init(&myListener);
@@ -363,6 +370,7 @@ int main()
 	gyro_config.gyro_range = Mpu6050::Config::Range::kLarge;
 	//sensitivity of accelerometer
 	gyro_config.accel_range = Mpu6050::Config::Range::kLarge;
+	gyro_config.cal_drift = true;
 	Mpu6050 mpu6050(gyro_config);
 
 
@@ -466,6 +474,7 @@ int main()
 	encoder_l.Update();
 	while(1){
 
+
 		if(t !=System::Time()){
 			t = System::Time();
 
@@ -496,11 +505,11 @@ int main()
 
 
 				if(blue_flag == 0){
-//					pGrapher.sendWatchData();
-										int16_t n = sprintf(buffer, "%.3f \n",output_angle);
-										fu.SendBuffer((Byte*)buffer,n);
-										memset(buffer, 0, n);
-//										pGrapher.sendWatchData();
+					pGrapher.sendWatchData();
+					//					int16_t n = sprintf(buffer, "ha \n");
+					//					fu.SendBuffer((Byte*)buffer,n);
+					//					memset(buffer, 0, n);
+					//										pGrapher.sendWatchData();
 
 					blue_flag = 1;
 				}
@@ -551,10 +560,12 @@ int main()
 				raw_accel = mma8451q.GetAccel();
 				raw_accel_angle = raw_accel[1] * 57.29578;
 				last_accel_angle = accel_angle;
+				ha_accel = accel[1] * 57.29578;
 				double temp = 0;
 				acc.Filtering(&temp, (double)accel[1], 0);
 				accel[1] = temp;
 				accel_angle = (float)(accel[1]*57.29578);
+
 				//				accel_angle = trust_old_accel*last_accel_angle +trust_new_accel*accel_angle;
 
 				//				if(moving_accel_flag == 0){
@@ -595,7 +606,7 @@ int main()
 				//					accel_angle = (moving_accel_1 + moving_accel_2 + moving_accel_3 + moving_accel_4)/4.0f;//  + moving_accel_7 + moving_accel_8
 				//				}
 				last_gyro_angle = gyro_angle;
-				gyro_angle += -omega[1] * 0.0035 + trust_accel * (accel_angle - gyro_angle);
+				gyro_angle += omega[1] * gyro_in_time + trust_accel * (accel_angle - gyro_angle);
 				angle_accel = (gyro_angle - last_gyro_angle)*angle_accel_const;
 				//							kalman_filter_init(&m_gyro_kf[0], 0.01f, kalman_value, accel_angle, 1);
 				//							kalman_filtering(&m_gyro_kf[0], &output_angle, &accel_angle, &gyro_angle, 1);
@@ -688,6 +699,9 @@ int main()
 				if(speed_error_sum >= speed_error_sum_max){
 					speed_error_sum = speed_error_sum_max;
 				}
+				if(speed_error_sum <= -speed_error_sum_max){
+					speed_error_sum = -speed_error_sum_max;
+				}
 				speed_error_change = (speed_error - last_speed_error);
 
 				//				original_angle = raw_angle - is_Kp * speed_error - is_Kd * speed_error_change;
@@ -742,8 +756,8 @@ int main()
 				//				balance_contribution = balance_ratio * balance_count;
 				//				turn_contribution_l = turn_ratio * turn_count_l;
 				//				turn_contribution_r = turn_ratio * turn_count_r;
-				ideal_count_l = balance_count + speed_count;
-				ideal_count_r = balance_count + speed_count;
+				ideal_count_l = (balance_count + speed_count) * turn[0];
+				ideal_count_r = (balance_count + speed_count) * turn[1];
 
 
 				//				ideal_count_l = ideal_count_l * turn[0];
@@ -771,8 +785,8 @@ int main()
 				ir_encoder_errorsum += ir_encoder_error * 0.001;
 				il_encoder_errorsum += il_encoder_error * 0.001;
 
-				ideal_count_r = ideal_count_r + ir_encoder_error * encoder_r_Kp + ir_encoder_errorsum * encoder_r_Ki;
-				ideal_count_l = ideal_count_l + il_encoder_error * encoder_l_Kp + il_encoder_errorsum * encoder_l_Ki;
+				ideal_count_r = ideal_count_r + ir_encoder_error * encoder_r_Kp;// + ir_encoder_errorsum * encoder_r_Ki;
+				ideal_count_l = ideal_count_l + il_encoder_error * encoder_l_Kp;// + il_encoder_errorsum * encoder_l_Ki;
 
 
 
@@ -824,9 +838,9 @@ int main()
 				else if((speed_l + speed_r)/2 < 0){
 					sign = 1;
 				}
-				else if((speed_l + speed_r)/2 == 0){
-					sign = 2;
-				}
+				//				else if((speed_l + speed_r)/2 == 0){
+				//					sign = 2;
+				//				}
 
 
 				//				if(sign == 2){
@@ -837,6 +851,12 @@ int main()
 
 
 				if(last_sign != sign){
+					motor_l.SetPower(0);
+					motor_r.SetPower(0);
+					motor_l.SetClockwise(sign);
+					motor_r.SetClockwise(sign);
+				}
+				else {
 					motor_l.SetPower(0);
 					motor_r.SetPower(0);
 					motor_l.SetClockwise(sign);
@@ -874,8 +894,8 @@ int main()
 					speed_r = -500;
 				}
 
-//				motor_l.SetPower((int16_t)(speed_l));
-//				motor_r.SetPower((int16_t)(speed_r));
+				motor_l.SetPower((int16_t)(speed_l));
+				motor_r.SetPower((int16_t)(speed_r));
 
 
 
@@ -1236,7 +1256,7 @@ int main()
 				//					accel_angle = (moving_accel_1 + moving_accel_2 + moving_accel_3 + moving_accel_4)/4.0f;//  + moving_accel_7 + moving_accel_8
 				//				}
 				last_gyro_angle = gyro_angle;
-				gyro_angle += -omega[1] * 0.0035 + trust_accel * (accel_angle - gyro_angle);
+				gyro_angle += omega[1] * gyro_in_time + trust_accel * (accel_angle - gyro_angle);
 				angle_accel = (gyro_angle - last_gyro_angle)*angle_accel_const;
 				//				gyro_angle = 0.2*last_gyro_angle + 0.8*gyro_angle;
 
@@ -1318,6 +1338,9 @@ int main()
 				if(speed_error_sum >= speed_error_sum_max){
 					speed_error_sum = speed_error_sum_max;
 				}
+				if(speed_error_sum <= -speed_error_sum_max){
+					speed_error_sum = -speed_error_sum_max;
+				}
 				speed_error_change = (speed_error - last_speed_error);
 
 				//				original_angle = raw_angle - is_Kp * speed_error - is_Kd * speed_error_change;
@@ -1372,8 +1395,8 @@ int main()
 				//				balance_contribution = balance_ratio * balance_count;
 				//				turn_contribution_l = turn_ratio * turn_count_l;
 				//				turn_contribution_r = turn_ratio * turn_count_r;
-				ideal_count_l = balance_count + speed_count;
-				ideal_count_r = balance_count + speed_count;
+				ideal_count_l = balance_count + speed_count * turn[0];
+				ideal_count_r = (balance_count + speed_count) * turn[1];
 
 
 				//				ideal_count_l = ideal_count_l * turn[0];
@@ -1454,9 +1477,9 @@ int main()
 				else if((speed_l + speed_r)/2 < 0){
 					sign = 1;
 				}
-				else if((speed_l + speed_r)/2 == 0){
-					sign = 2;
-				}
+				//				else if((speed_l + speed_r)/2 == 0){
+				//					sign = 2;
+				//				}
 
 
 				//				if(sign == 2){
@@ -1472,7 +1495,12 @@ int main()
 					motor_l.SetClockwise(sign);
 					motor_r.SetClockwise(sign);
 				}
-
+				else {
+					motor_l.SetPower(0);
+					motor_r.SetPower(0);
+					motor_l.SetClockwise(sign);
+					motor_r.SetClockwise(sign);
+				}
 
 
 
@@ -1504,8 +1532,8 @@ int main()
 					speed_r = -500;
 				}
 
-//				motor_l.SetPower((int16_t)(speed_l));
-//				motor_r.SetPower((int16_t)(speed_r));
+				motor_l.SetPower((int16_t)(speed_l));
+				motor_r.SetPower((int16_t)(speed_r));
 
 
 
