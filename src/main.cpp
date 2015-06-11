@@ -954,7 +954,7 @@ int main()
 				int16_t a = 63, b = 64;
 				int16_t border_r = Tsl1401cl::kSensorW - 1, border_l = 0;
 
-				while(! ccd.SampleProcess()){};
+				while(!ccd.SampleProcess()){};
 				Data = ccd.GetData();  // 0 - 127 is left to right from the view of CCD
 				ccd.StartSample();
 				uint16_t ccd_sum = 0;
