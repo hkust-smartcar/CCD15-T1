@@ -41,6 +41,8 @@
 #define MAGENTA         0xF81F
 #define YELLOW          0xFFE0
 #define WHITE           0xFFFF
+#define LEFT            0
+#define RIGHT           1
 
 char CCD;
 using namespace libsc;
@@ -66,12 +68,12 @@ Mcg::Config Mcg::GetMcgConfig()
 }
 
 
-float ic_Kp = 2000;                   // Recommend 50
-float ic_Kd = 5000;            	    // Recommend 45
+float ic_Kp = 3500.0000;                   // Recommend 50
+float ic_Kd = 5000.0000;            	    // Recommend 45
 
-//float is_Kp = 0;                  // Recommend 0.05
+float is_Kp = 0.0;                  // Recommend 0.05
 float is_Ki = 0;
-float is_Kd = 0.000;
+float is_Kd = 0.00;
 float speed_Kp = 0;
 float speed_Kd = 0;
 float ideal_speed = 50;
@@ -81,10 +83,10 @@ float turn_Kp = 0;         // Recommend
 //float turn_Ki = 0;
 float turn_Kd = 0;
 
-float encoder_r_Kp = 1.2;        // Recommend 2
+float encoder_r_Kp = 5.0f;        // Recommend 2
 //float encoder_r_Ki = 0.0;   // Recommend 0.0008
 //float encoder_r_Kd = 0.0;
-float encoder_l_Kp = 2;        // Recommend 2
+float encoder_l_Kp = 5.0f;        // Recommend 2
 //float encoder_l_Ki = 0.00;   // Recommend 0.0008
 //float encoder_l_Kd = 0.0;
 
@@ -119,12 +121,46 @@ float ideal_count = 0;
 //float ideal_speed = 10;
 std::array<uint16_t, Tsl1401cl::kSensorW> Data;
 
+// Turning variable
+Byte up_ccd = 0;
+int low_ideal_speed = 50;
+int high_ideal_speed = 50;
+int up_mid_point = 63;
+int up_l_standard_border = 0;		// undefined
+int up_r_standard_border = 0;		// undefined
+int down_l_standard_border = 0;		// undefined
+int down_r_standard_border = 0;		// undefined
+int up_border_l = 0;
+int last_up_border_l = 0;
+int up_border_r = 0;
+int last_up_border_r = 0;
+int up_ccd_average = 0;
+int up_white_count = 0;
+int up_white_count_up_limit = 0;
+int up_white_count_low_limit = 0;
+int down_white_count_up_limit = 0;
+int down_white_count_low_limit = 0;
+int min_line_wide = 0;
+Byte mid_cross_right = 0;		// Decided by up_border - last_up_border
+Byte mid_cross = 0;             // Decided by white_count
+Byte cross = 0;
+Byte middle_line = 0;
+Byte right_angle = 0;
+Byte obstacle = 0;              // Decided by up_border - last_up_border
+Byte curve = 0;
+Byte wave_curve = 0;
+Byte black_line = 0;
+Byte turn_direction = 0;
+
+int print_ccd = 0;
 void SelectLeft(const uint8_t id)
 {
+	print_ccd = 0;
 }
 
 void SelectRight(const uint8_t id)
 {
+	print_ccd = 1;
 }
 
 void SelectUp(const uint8_t id)
@@ -139,11 +175,12 @@ void SelectDown(const uint8_t id)
 
 void Select(const uint8_t id)
 {
-
+	up_l_standard_border = up_border_l;
+	up_r_standard_border = up_border_r;
 }
 
-
-
+int Middle_pass_filter(int pixel);
+void Pixel_filter(std::array<uint16_t, Tsl1401cl::kSensorW> pixel);
 
 int main()
 {
@@ -172,14 +209,14 @@ int main()
 
 	libutil::InitDefaultFwriteHandler(&bt);
 
-	RemoteVarManager::Var* turn_Kp = varmanager->Register("turn_Kp",RemoteVarManager::Var::Type::kReal);
 	RemoteVarManager::Var* is_Kp = varmanager->Register("is_Kp",RemoteVarManager::Var::Type::kReal);
 	RemoteVarManager::Var* is_Kd = varmanager->Register("is_Kd",RemoteVarManager::Var::Type::kReal);
+	RemoteVarManager::Var* turn_Kp = varmanager->Register("turn_Kp",RemoteVarManager::Var::Type::kReal);
 	RemoteVarManager::Var* turn_Kd = varmanager->Register("turn_Kd",RemoteVarManager::Var::Type::kReal);
 
-	printf("turn_Kp,real,0,0\n");
-	printf("is_Kp,real,1,0\n");
-	printf("is_Kd,real,2,0\n");
+	printf("is_Kp,real,0,0\n");
+	printf("is_Kd,real,1,0\n");
+	printf("turn_Kp,real,2,0\n");
 	printf("turn_Kd,real,3,0\n");
 
 
@@ -203,7 +240,7 @@ int main()
 	Kalman Kalman_l(0.0001, R, 0, 1);
 	Kalman Kalman_r(0.0001, R, 0, 1);
 	R[0] = 0.005;
-	Kalman turnKF(0.0001,R,0,1);
+	Kalman mid_point_KF(0.00001,R,0,1);
 
 	Joystick::Config joyconfig;
 	joyconfig.id = 0;
@@ -221,11 +258,11 @@ int main()
 	Joystick joy(joyconfig);
 
 	DirMotor::Config l_motor;
-	l_motor.id = 1;
+	l_motor.id = 0;
 	DirMotor motor_l(l_motor);
 
 	DirMotor::Config r_motor;
-	r_motor.id = 0;
+	r_motor.id = 1;
 	DirMotor motor_r(r_motor);
 
 	AbEncoder::Config enconfig;
@@ -236,7 +273,8 @@ int main()
 	r_encoder.id = 1;
 	AbEncoder encoder_r(r_encoder);
 
-	Tsl1401cl ccd(0);
+	Tsl1401cl ccd_down(0);
+	Tsl1401cl ccd_up(1);
 
 	St7735r::Config config1;
 	config1.is_revert = false;
@@ -260,8 +298,14 @@ int main()
 
 	float speed = 0;
 
+
+	gg:
+
 	t= System::Time();
 	pt = t;
+
+	motor_l.SetPower(0);
+	motor_r.SetPower(0);
 	while(1){
 
 		mma8451q.Update();
@@ -323,6 +367,7 @@ int main()
 	uint32_t pt6 = 0;
 	uint32_t pt7 = 0;
 	uint32_t pt8 = 0;
+	uint32_t right_angle_time = 0;
 
 
 	int sign = 0;
@@ -330,6 +375,8 @@ int main()
 	int ccd_counter = 0;
 	bool print_data = false;
 	int white_count = 0;
+	int black_count = 0;
+	int turn_count = 0;
 
 	Byte yo = 0;                      //to organize the sequence of code
 
@@ -338,6 +385,7 @@ int main()
 
 	encoder_r.Update();               //to reset the count
 	encoder_l.Update();
+
 	while(1){
 
 		if(t !=System::Time()){
@@ -367,29 +415,29 @@ int main()
 //			if((int32_t)(t-pt8) >= 1000)
 //			{
 //				pt8 = t;
-//				switch(ideal_count)
+//				switch(int(ideal_count))
 //				{
 //				case 10:
-//					ideal_count = 200;
+//					ideal_count = 200.0f;
 //					break;
 //				case 200:
-//					ideal_count = 300;
+//					ideal_count = 300.0f;
 //					break;
 //				case 300:
-//					ideal_count = -10;
+//					ideal_count = -10.0f;
 //					break;
 //				case -10:
-//					ideal_count = -200;
+//					ideal_count = -200.0f;
 //					break;
 //				case -200:
-//					ideal_count = -300;
+//					ideal_count = -300.0f;
 //					break;
 //				case -300:
-//					ideal_count = 10;
+//					ideal_count = 10.0f;
 //					break;
 //
 //				default:
-//					ideal_count = 10;
+//					ideal_count = 10.0f;
 //					break;
 //				}
 //			}
@@ -452,10 +500,10 @@ int main()
 
 				output_angle = gyro_angle;
 				last_angle_error = now_angle_error;
-				now_angle_error = (original_angle - output_angle) / 57.29578;
+				now_angle_error = tan((original_angle - output_angle) / 57.29578);
 				angle_error_change = now_angle_error -last_angle_error;
 
-				ideal_count = ic_Kp * tan(now_angle_error)  + ic_Kd * angle_error_change;
+				ideal_count = ic_Kp * now_angle_error  + ic_Kd * angle_error_change;
 			}
 
 
@@ -489,63 +537,77 @@ int main()
 
 			    if(ideal_speed != 0)
 			    	anti_friction_angle = ideal_speed * 0.0017f;
-			    original_angle = raw_angle - anti_friction_angle - libutil::Clamp<float>(-8.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd->GetReal() * speed_error_change + is_Ki * speed_error_sum, 8.0f);
+			    original_angle = raw_angle - anti_friction_angle -
+			    		libutil::Clamp<float>(-8.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd->GetReal() * speed_error_change + is_Ki * speed_error_sum, 8.0f);
 			    last_speed_error = 0.8f * speed_error + 0.2f * last_speed_error;
 			    anti_friction_angle = 0;
 
-//			    if(turn[0] < 0.1 || turn[1] < 0.1)
-//			    	 original_angle = raw_angle;
+			    last_ir_encoder_error = ir_encoder_error;
+			    ir_encoder_error = ideal_count - count_r;
+			    last_il_encoder_error = il_encoder_error;
+			    il_encoder_error = ideal_count - count_l;
 
-					last_ir_encoder_error = ir_encoder_error;
-					ir_encoder_error = ideal_count - count_r;
-					last_il_encoder_error = il_encoder_error;
-					il_encoder_error = ideal_count - count_l;
+			    ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
+			    il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
-					ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-					il_encoder_errorsum += (float)il_encoder_error * 0.001;
+			    speed_PID = ideal_speed + speed_Kp * speed_error + speed_Kd * speed_error_change;
 
-					speed_PID = ideal_speed + speed_Kp * speed_error + speed_Kd * speed_error_change;
+			    if(speed_Kp == 0)
+			    	speed_PID = 0;
 
-					if(speed_Kp == 0)
-						speed_PID = 0;
+				power_r = ideal_count - speed_PID /*+ (float)ir_encoder_error * encoder_r_Kp*/;
+				power_l = ideal_count - speed_PID /*+ (float)il_encoder_error * encoder_l_Kp*/;
 
-					power_r = ideal_count - speed_PID /*+ (float)ir_encoder_error * encoder_r_Kp*/;
-					power_l = ideal_count - speed_PID /*+ (float)il_encoder_error * encoder_l_Kp*/;
+			    //					if(turn > 0)
+			    //						power_r += turn;
+			    //					else
+			    //						power_l -= turn;
 
-					//					if(turn > 0)
-					//						power_r += turn;
-					//					else
-					//						power_l -= turn;
+			    speed_r = libutil::Clamp<float>(-500.5f, 1.935 *(power_r + turn), 500.0f);
+			    speed_l = libutil::Clamp<float>(-500.0f, 1.745 *(power_l - turn), 500.0f);
 
-				    speed_r = 2.0*(power_r + turn);//1.9113f *
-				    speed_l = 2.0*(power_l - turn);//1.6769f *
+			    if(speed_l >= 0)
+			    	sign = 0;
+			    else if(speed_l < 0)
+			    	sign = 1;
 
-					if(speed_l >= 0)
-						sign = 0;
-					else if(speed_l < 0)
-						sign = 1;
+			    motor_l.SetClockwise(sign);
+			    motor_r.SetClockwise(!sign);
 
-					motor_l.SetClockwise(sign);
-					motor_r.SetClockwise(sign);
+			    if(speed_l > 900)
+			    	speed_l = 900;
+			    else if(speed_l < -900)
+			    	speed_l = -900;
 
-					if(speed_l > 900)
-						speed_l = 900;
-					else if(speed_l < -900)
-						speed_l = -900;
+			    if(speed_r > 900)
+			    	speed_r = 900;
+			    else if(speed_r < -900)
+			    	speed_r = -900;
 
-					if(speed_r > 900)
-						speed_r = 900;
-					else if(speed_r < -900)
-						speed_r = -900;
+			    if(right_angle == 11)
+			    {
+			    	if(turn_direction == RIGHT)
+			    	{
+			    		motor_r.SetPower(0);
+			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
+			    	}
+			    	else if(turn_direction == LEFT)
+			    	{
+			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
+			    		motor_l.SetPower(0);
+			    	}
+			    }
 
-					motor_l.SetPower(int(abs(speed_l) + 41.38f));
-					motor_r.SetPower(int(abs(speed_r) + 40.0f));
+			    else
+			    {
+			    	motor_l.SetPower(int(abs(speed_l) + 25.3f));
+			    	motor_r.SetPower(int(abs(speed_r) + 27.6f));
+			    }
 			}
 
 
 
 			if((int32_t)(t-pt2) >= 1 && yo == 2){
-//				howard.Set(1);
 				pt0 = System::Time();
 				yo = 8;
 
@@ -572,18 +634,236 @@ int main()
 				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
 				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
-				int a = 63, b = 64;
+				// For the top CCD to prediction
+				if(up_ccd == 1)
+				{
+					up_ccd = 0;
+					while(! ccd_up.SampleProcess()){};
+					Data = ccd_up.GetData();  // 0 - 127 is left to right from the view of CCD
+					ccd_up.StartSample();
+					uint32_t ccd_sum = 0;
 
-				while(! ccd.SampleProcess()){};
-				Data = ccd.GetData();  // 0 - 127 is left to right from the view of CCD
-				ccd.StartSample();
-				uint32_t ccd_sum = 0;
+					Pixel_filter(Data);
 
-				for(int i = 10; i < Tsl1401cl::kSensorW - 10; i++){
-					Data[i] = (float)Data[i] * 80.0f * 3.8f / 256.0f;
-					ccd_sum += Data[i];
+					for(int i = 15; i < Tsl1401cl::kSensorW - 15; i++){
+						ccd_sum += Data[i];
+					}
+					up_ccd_average = ccd_sum / (Tsl1401cl::kSensorW - 30);    // print
+
+					if(up_ccd_average > 160)
+						up_ccd_average = up_ccd_average - 10;
+					else if(up_ccd_average < 140)
+						up_ccd_average = up_ccd_average + 10;
+
+					up_white_count = 0;
+					for(int i = 15; i < Tsl1401cl::kSensorW - 15; i++){
+						if(Data[i] < up_ccd_average)
+							Data[i] = 0;
+						else
+						{
+							Data[i] = 1;
+							up_white_count++;
+						}
+					}
+
+					if(black_line == 0 && middle_line == 0 && cross == 00 && up_white_count >= 96)
+					{
+						cross = 10;
+						right_angle = 00;
+					}
+
+					if(cross == 10 && up_white_count <= 82)
+						cross = 00;
+
+					for(int i = up_mid_point; i >= 15; i--)
+					{
+						up_border_l = i;
+						if(Data[i] == 0)
+							break;
+					}
+
+					for(int i = up_mid_point; i < Tsl1401cl::kSensorW - 15; i++)
+					{
+						up_border_r = i;
+						if(Data[i] == 0)
+							break;
+					}
+
+					// Detect the right angle
+					if(black_line == 0 &&
+						middle_line == 0 &&
+						cross == 00 &&
+						right_angle == 00)
+					{
+						if(abs(up_border_l - up_l_standard_border) <= 3 && up_border_r >= 112)
+						{
+							right_angle = 10;
+							turn_direction = RIGHT;
+							// Change other states to 0
+						}
+
+						else if(abs(up_border_r - up_r_standard_border) <= 3 && up_border_l <= 16)
+						{
+							right_angle = 10;
+							turn_direction = LEFT;
+							// Change other states to 0
+						}
+					}
+
+					else if(right_angle == 10)
+					{
+						if(up_white_count <= 40)
+							right_angle == 11;
+					}
+
+					else if(right_angle == 11)
+					{
+						if(turn_direction == RIGHT)
+						{
+							if(abs(up_border_l - up_l_standard_border) <= 3)
+								right_angle = 00;
+						}
+
+						else if(turn_direction == LEFT)
+						{
+							if(abs(up_border_r - up_r_standard_border) <= 3)
+								right_angle == 00;
+						}
+					}
+
+					// right_angle self-correcting
+					if(right_angle == 10)
+					{
+						if(abs(up_border_r - up_r_standard_border) <= 3 && abs(up_border_l - up_l_standard_border) <= 3)
+							right_angle = 00;
+					}
+
+
+					up_mid_point = (up_border_l + up_border_r) / 2;  // print
 				}
 
+				/*  The below CCD's turn.
+				 *  It decides the middle line.
+				 *  And cancels states.
+				 *
+				 *
+				 */
+				else
+				{
+					up_ccd = 1;
+					while(! ccd_down.SampleProcess()){};
+					Data = ccd_down.GetData();  // 0 - 127 is left to right from the view of CCD
+					ccd_down.StartSample();
+					uint32_t ccd_sum = 0;
+
+					for(int i = 7; i < Tsl1401cl::kSensorW - 7; i++){
+						ccd_sum += Data[i];
+					}
+					ccd_average = ccd_sum / (Tsl1401cl::kSensorW - 14);    // print
+
+					if(ccd_average > 160)
+						ccd_average = ccd_average - 10;
+					else if(ccd_average < 140)
+						ccd_average = ccd_average + 10;
+
+					white_count = 0;
+					black_count = 0;
+					for(int i = 7; i < Tsl1401cl::kSensorW - 7; i++){
+						if(Data[i] < ccd_average)
+						{
+							Data[i] = 0;
+							if(i >= 54 && i <= 72)
+								black_count++;
+						}
+						else
+						{
+							Data[i] = 1;
+							white_count++;
+						}
+					}
+
+					if(white_count <= 30 && black_line == 0 && right_angle == 0)
+					{
+						black_line = 1;
+						middle_line = 0;
+						if(ideal_speed == low_ideal_speed)
+							ideal_speed = high_ideal_speed;
+						else
+							ideal_speed = low_ideal_speed;
+					}
+
+					else if(white_count >= 80 && black_line == 1)
+						black_line = 0;
+
+					if(black_count >= 4 && middle_line == 0 && black_line == 0 && right_angle == 0)   // added right_angle
+					{
+						middle_line = 1;
+						// Change other states to 0
+						cross = 00;
+					}
+
+					if(middle_line == 1)
+					{
+						for(int i = 20; i <= 100; i++)
+						{
+							border_l = i;
+							if(Data[i] == 0)
+								break;
+						}
+
+						for(int i = 100; i >= 20; i--)
+						{
+							border_r = i;
+							if(Data[i] == 0)
+								break;
+						}
+
+						if(border_l > border_r)
+						{
+							middle_line = 0;
+							border_l = mid_point;
+							border_r = mid_point;
+						}
+					}
+
+					else if(right_angle == 10 && white_count <= 60)
+						right_angle = 11;
+
+					else{
+						for(int i = mid_point; i >= 7; i--)
+						{
+							border_l = i;
+							if(Data[i] == 0)
+								break;
+						}
+
+						for(int i = mid_point; i < Tsl1401cl::kSensorW - 7; i++)
+						{
+							border_r = i;
+							if(Data[i] == 0)
+								break;
+						}
+					}
+
+						mid_point = (border_l + border_r) / 2;  // print
+				}
+
+//				double temp_ = 0;
+//				mid_point_KF.Filtering(&temp_, mid_point,0);
+//				mid_point = temp_;
+
+//				int a = 63, b = 64;
+//
+//				while(! ccd.SampleProcess()){};
+//				Data = ccd.GetData();  // 0 - 127 is left to right from the view of CCD
+//				ccd.StartSample();
+//				uint32_t ccd_sum = 0;
+//
+//				for(int i = 10; i < Tsl1401cl::kSensorW - 10; i++){
+//					Data[i] = (float)Data[i] * 80.0f * 3.8f / 256.0f;
+//					ccd_sum += Data[i];
+//				}
+//
 //				St7735r::Rect rect_2;
 //				for(int i = 0; i<Tsl1401cl::kSensorW; i++){
 //					rect_2.x = i;
@@ -593,129 +873,118 @@ int main()
 //					lcd.SetRegion(rect_2);
 //					lcd.FillColor(~0);
 //				}
-
-				ccd_average = ccd_sum / (Tsl1401cl::kSensorW - 20);
-
-				if(ccd_average > 70)
-					ccd_average = 72;
-				else if(ccd_average < 35)
-					ccd_average = 35;
-				else
-					ccd_average = ccd_average + 3;
-
-				white_count = 0;
-
-				for(int i = 10; i < Tsl1401cl::kSensorW - 10; i++){
-					if(Data[i] < ccd_average)
-						Data[i] = 0;
-					else
-					{
-						Data[i] = 1;
-						white_count++;
-					}
-				}
-
-				// left is 0
-				if(Data[63] == 1){
-					for (a = a + 1; a < Tsl1401cl::kSensorW - 10; a++)
-					{
-						if(Data[a] == 1)
-							border_r = a;
-						else
-							break;
-					}
-
-					for(b = b - 1; b >= 10; b--)
-					{
-						if(Data[b] == 1)
-							border_l = b;
-						else
-							break;
-					}
-
-					//						while(border_r - border_l < 80)
-					//						{
-					//							for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
-					//							{
-					//								if(Data[a] == 60)
-					//									border_r = a;
-					//								else
-					//									break;
-					//							}
-					//
-					//							for(b = b - 1; b >= 0; b--)
-					//							{
-					//								if(Data[b] == 60)
-					//									border_l = b;
-					//								else
-					//									break;
-					//							}
-					//						}
-				}
-
-				else
-				{
-					if(mid_point >= 63)
-					{
-						for(int i = 64; i < Tsl1401cl::kSensorW - 10; i++)
-						{
-							if (Data[i] == 1)
-							{
-								border_l = i;
-								border_r = Tsl1401cl::kSensorW - 11;
-								break;
-							}
-							else{
-								border_l = i;
-								border_r = i;
-							}
-						}
-					}
-
-					else
-					{
-						for(int i = 62; i >= 10; i--)
-						{
-							if (Data[i] == 1)
-							{
-								border_r = i;
-								border_l = 10;
-								break;
-							}
-							else{
-								border_l = i;
-								border_r = i;
-							}
-						}
-					}
-				}
-
-				mid_point = (border_l + border_r) / 2;
+//
+//				ccd_average = ccd_sum / (Tsl1401cl::kSensorW - 20);
+//
+//				if(ccd_average > 70)
+//					ccd_average = 72;
+//				else if(ccd_average < 35)
+//					ccd_average = 35;
+//				else
+//					ccd_average = ccd_average + 3;
+//
+//				white_count = 0;
+//
+//				for(int i = 10; i < Tsl1401cl::kSensorW - 10; i++){
+//					if(Data[i] < ccd_average)
+//						Data[i] = 0;
+//					else
+//					{
+//						Data[i] = 1;
+//						white_count++;
+//					}
+//				}
+//
+//				// left is 0
+//				if(Data[63] == 1){
+//					for (a = a + 1; a < Tsl1401cl::kSensorW - 10; a++)
+//					{
+//						if(Data[a] == 1)
+//							border_r = a;
+//						else
+//							break;
+//					}
+//
+//					for(b = b - 1; b >= 10; b--)
+//					{
+//						if(Data[b] == 1)
+//							border_l = b;
+//						else
+//							break;
+//					}
+//
+//					//						while(border_r - border_l < 80)
+//					//						{
+//					//							for (a = a + 1; a < Tsl1401cl::kSensorW; a++)
+//					//							{
+//					//								if(Data[a] == 60)
+//					//									border_r = a;
+//					//								else
+//					//									break;
+//					//							}
+//					//
+//					//							for(b = b - 1; b >= 0; b--)
+//					//							{
+//					//								if(Data[b] == 60)
+//					//									border_l = b;
+//					//								else
+//					//									break;
+//					//							}
+//					//						}
+//				}
+//
+//				else
+//				{
+//					if(mid_point >= 63)
+//					{
+//						for(int i = 64; i < Tsl1401cl::kSensorW - 10; i++)
+//						{
+//							if (Data[i] == 1)
+//							{
+//								border_l = i;
+//								border_r = Tsl1401cl::kSensorW - 11;
+//								break;
+//							}
+//							else{
+//								border_l = i;
+//								border_r = i;
+//							}
+//						}
+//					}
+//
+//					else
+//					{
+//						for(int i = 62; i >= 10; i--)
+//						{
+//							if (Data[i] == 1)
+//							{
+//								border_r = i;
+//								border_l = 10;
+//								break;
+//							}
+//							else{
+//								border_l = i;
+//								border_r = i;
+//							}
+//						}
+//					}
+//				}
+//
+//				mid_point = (border_l + border_r) / 2;
 				float last_turn_error = turn_error;
-				turn_error = 63 - mid_point;
-				double temp_ = 0;;
-				turnKF.Filtering(&temp_, turn_error,0);
-				turn_error = temp_;
+				if(black_line == 1 || cross == 11)
+					turn_error = 63 - up_mid_point;
+				else
+					turn_error = 63 - mid_point;
 				float turn_error_change = turn_error - last_turn_error;
 				float hehe = turn_Kp->GetReal();
-//				if(white_count >= 88)
-//					hehe = hehe / 10;
 
-//				if(turn_error > 20 || turn_error < -20)
-//					hehe = hehe * 2;
-
-				//				if(turn_error > 0){
-					//					turn[0] = 1 - hehe * turn_error - turn_error_change * turn_Kd->GetReal();
-				//					if(turn[0] < 0)
-				//						turn[0] = 0;
-				//				}
-				//				else{1
-				//					turn[1] = 1 + hehe * 0.75 * turn_error + turn_error_change * turn_Kd->GetReal();
-				//					if(turn[1] < 0)
-				//						turn[1] = 0;
-				//				}
-
-				turn = hehe * turn_error + turn_error_change * turn_Kd->GetReal();
+				turn_count++;
+				if(turn_count >= 3)
+				{
+					turn_count = 0;
+					turn = hehe * turn_error + turn_error_change * turn_Kd->GetReal();
+				}
 			}
 
 
@@ -787,10 +1056,10 @@ int main()
 
 				output_angle = gyro_angle;
 				last_angle_error = now_angle_error;
-				now_angle_error = (original_angle - output_angle) / 57.29578;
+				now_angle_error = tan((original_angle - output_angle) / 57.29578);
 				angle_error_change = now_angle_error -last_angle_error;
 
-				ideal_count = ic_Kp * tan(now_angle_error)  + ic_Kd * angle_error_change;
+				ideal_count = ic_Kp * now_angle_error  + ic_Kd * angle_error_change;
 			}
 
 
@@ -822,13 +1091,10 @@ int main()
 
 			    if(ideal_speed != 0)
 			    	anti_friction_angle = ideal_speed * 0.0017f;
-			    original_angle = raw_angle - anti_friction_angle - libutil::Clamp<float>(-8.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd->GetReal() * speed_error_change, 8.0f);
-			 			    last_speed_error = 0.8f * speed_error + 0.2f * last_speed_error;
+			    original_angle = raw_angle - anti_friction_angle -
+			    		libutil::Clamp<float>(-8.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd->GetReal() * speed_error_change + is_Ki * speed_error_sum, 8.0f);			 			    last_speed_error = 0.8f * speed_error + 0.2f * last_speed_error;
 
 			    anti_friction_angle = 0;
-
-//			    if(turn[0] < 0.1 || turn[1] < 0.1)
-//			    	 original_angle = raw_angle;
 
 			    last_ir_encoder_error = ir_encoder_error;
 			    ir_encoder_error = ideal_count - count_r;
@@ -853,8 +1119,8 @@ int main()
 //					else
 //						power_l -= turn;
 
-			    speed_r = 2.0*(power_r + turn);//1.9113f *
-			    speed_l = 2.0*(power_l - turn);//1.6769f *
+			    speed_r = libutil::Clamp<float>(-500.5f, 1.935 *(power_r + turn), 500.0f);
+			    speed_l = libutil::Clamp<float>(-500.0f, 1.745 *(power_l - turn), 500.0f);
 
 			    if(speed_l >= 0)
 			    	sign = 0;
@@ -862,7 +1128,7 @@ int main()
 			    	sign = 1;
 
 			    motor_l.SetClockwise(sign);
-			    motor_r.SetClockwise(sign);
+			    motor_r.SetClockwise(!sign);
 
 			    if(speed_l > 900)
 			    	speed_l = 900;
@@ -874,8 +1140,25 @@ int main()
 			    else if(speed_r < -900)
 			    	speed_r = -900;
 
-			    motor_l.SetPower(int(abs(speed_l) + 41.38f));
-			    motor_r.SetPower(int(abs(speed_r) + 40.0f));
+			    if(right_angle == 11)
+			    {
+			    	if(turn_direction == RIGHT)
+			    	{
+			    		motor_r.SetPower(0);
+			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
+			    	}
+			    	else if(turn_direction == LEFT)
+			    	{
+			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
+			    		motor_l.SetPower(0);
+			    	}
+			    }
+
+			    else
+			    {
+			    	motor_l.SetPower(int(abs(speed_l) + 25.3f));
+			    	motor_r.SetPower(int(abs(speed_r) + 27.6f));
+			    }
 			}
 
 
@@ -905,112 +1188,74 @@ int main()
 				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
 				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
-				printf("%f, %f, %f, %f\n", ideal_count, turn,  speed_r, speed_l);
 
+				if(print_ccd == 0)
+				printf("%d, %d, %d, %f, %d, %d\n", mid_point, border_l, border_r, turn, cross, middle_line);
+
+				else
+				printf("%d, %d, %d, %d, %d, %d\n", up_mid_point, up_border_l, up_border_r, black_line, right_angle, middle_line);
 			}
 
-//			if((int)(t - pt7) >= 1000)
+//			if(speed >= 10 * ideal_speed || speed <= -10 * ideal_speed)
 //			{
-//				pt7 = t;
-//
-//				// Change print mode while running
-//				if (button0.IsDown())
-//				{
-//					led0.Switch();
-//					print_data = !print_data;
-//				}
-//
-//
-//				// Enable print mode without running
-//				else if(button1.IsDown())
-//				{
-//					led1.Switch();
-//					float average = 0;
-//					while(1)
-//					{
-//						t = System::Time();
-//
-//						if((int)(t - pt) >= 6)
-//						{
-//							pt = t;
-//							ccd_counter++;
-//
-//							ccd.StartSample();
-//							while (!ccd.SampleProcess()){}
-//							Data = ccd.GetData();
-//
-//							uint32_t sum = 0;
-//
-//							for(int i = 0; i < Tsl1401cl::kSensorW; i++){
-//								Data[i] = Data[i] * 4;
-//								sum += Data[i];
-//							}
-//
-//							average = sum / Tsl1401cl::kSensorW;
-//							if(average > 72)
-//								average = 72;
-//							else if(average < 35)
-//								average = 35;
-//							else
-//								average = average + 3;
-//
-//						}
-//
-//						if (ccd_counter >= 15){
-//							ccd_counter = 0;
-//							St7735r::Rect rect_1, rect_2, rect_3, rect_4;
-//							for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-//								rect_1.x = i;
-//								rect_1.y = 0;
-//								rect_1.w = 1;
-//								rect_1.h = Data[i];
-//								rect_2.x = i;
-//								rect_2.y = Data[i];
-//								rect_2.w = 1;
-//								rect_2.h = 80 - Data[i];
-//								lcd.SetRegion(rect_1);
-//								lcd.FillColor(~0);
-//								lcd.SetRegion(rect_2);
-//								lcd.FillColor(0);
-//							}
-//							for(int i=0; i<Tsl1401cl::kSensorW; i++){
-//								if(Data[i] < average)
-//									Data[i] = 0;
-//								else
-//									Data[i] = 60;
-//							}
-//
-//							for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-//								rect_3.x = i;
-//								rect_3.y = 90;
-//								rect_3.w = 1;
-//								rect_3.h = Data[i];
-//								rect_4.x = i;
-//								rect_4.y = 90 + Data[i];
-//								rect_4.w = 1;
-//								rect_4.h = 60 - Data[i];
-//								lcd.SetRegion(rect_3);
-//								lcd.FillColor(~0);
-//								lcd.SetRegion(rect_4);
-//								lcd.FillColor(0);
-//							}
-//						}
-//
-//						// Break the mode that print pixels without running
-//						if((int)(t - pt8) >= 1000){
-//							pt8 = t;
-//							if(button1.IsDown())
-//							{
-//								led1.Switch();
-//								break;
-//							}
-//						}
-//
-//
-//					}
-//				}
+//				printf("safe mode\n");
+//				goto gg;
 //			}
-
 		}
 	}
+}
+
+
+int Middle_pass_filter(uint16_t pixel)
+{
+	static uint16_t array_flag = 0;
+	static uint16_t past_data[128] = {};
+	static uint16_t new_data[128] = {};
+	static uint16_t temp = 0;
+
+	for(int i = 0;i < 3 - 1;i++){
+		past_data[i] = past_data[i+1];
+	}
+	past_data[3-1] = pixel;
+for(int i = 0;i < 3;i++){
+        new_data[i] = past_data[i];
+}
+//cout << "Your past three numbers is:" << new_data[0] << " "<< new_data[1] << " " << new_data[2] << "\n";
+	if(++array_flag < 3){
+
+	}
+	else{
+		for(int i = 0;i < 3 - 1;i++){
+			for(int a = i + 1;a < 3;a++){
+				if(new_data[i] <= new_data[a]){
+
+					continue;
+				}
+				else{
+					temp = new_data[i];
+					new_data[i] = new_data[a];
+					new_data[a] = temp;
+				}
+				if(new_data[0] < new_data[1] && new_data[1] < new_data[2]){
+					break;
+				}
+
+			}
+			if(new_data[0] < new_data[1] && new_data[1] < new_data[2]){
+					break;
+				}
+
+		}
+		pixel = new_data[1];
+past_data[1] = pixel;
+	}
+	return pixel;
+}
+
+
+void Pixel_filter(std::array<uint16_t, Tsl1401cl::kSensorW> pixel)
+{
+    for(int i = 7;i < 120;i++){
+       pixel[i-1] = Middle_pass_filter(pixel[i]);
+    }
 }
