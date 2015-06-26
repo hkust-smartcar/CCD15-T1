@@ -149,7 +149,7 @@ LDLIBS+=$(addprefix -l,$(ALL_LIBS)) -l$(LIBSCCC_BIN)$(BIN_SUFFIX)
 $(info Building $(OUT_EXE)$(BIN_SUFFIX)$(OUT_EXE_SUFFIX))
 
 ifdef WIN32
-rwildcard=$(wildcard $1/$2) $(foreach d,$(wildcard $1/*),$(call rwildcard,$(d),$2))
+rwildcard=$(wildcard $1/$2) $(foreach d,$(wildcard $1),$(call rwildcard,$(d),$2))
 SRC_FILES:=$(call rwildcard,$(SRC_PATH),*.c)
 SRC_FILES:=$(SRC_FILES) $(call rwildcard,$(SRC_PATH),*.S)
 SRC_FILES:=$(SRC_FILES) $(call rwildcard,$(SRC_PATH),*.cpp)
@@ -206,7 +206,7 @@ ifdef WIN32
 	@rmdir /s /q $(OUT_OBJ_PATH) $(OUT_LIB_PATH)
 
 else ifdef UNIX
-	@rm -f $(OUT_LIB_PATH)/*.a
+	@rm -f $(OUT_LIB_PATH).a
 	@find $(OUT_OBJ_PATH) -type f \( -name *.o -o -name *.d \) -exec rm -f {} \;
 
 endif
