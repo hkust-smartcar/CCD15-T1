@@ -1042,22 +1042,22 @@
 //					moving_accel_4 = accel_angle;
 //					moving_accel_flag = 0;
 //				}
-////				else if(moving_accel_flag == 4){
-////					moving_accel_5 = accel_angle;
-////					moving_accel_flag = 5;
-////				}
-////				else if(moving_accel_flag == 5){
-////					moving_accel_6 = accel_angle;
-////					moving_accel_flag = 6;
-////				}
-////				else if(moving_accel_flag == 6){
-////					moving_accel_7 = accel_angle;
-////					moving_accel_flag = 7;
-////				}
-////				else if(moving_accel_flag ==7){
-////					moving_accel_8 = accel_angle;
-////					moving_accel_flag = 0;
-////				}
+//				//				else if(moving_accel_flag == 4){
+//				//					moving_accel_5 = accel_angle;
+//				//					moving_accel_flag = 5;
+//				//				}
+//				//				else if(moving_accel_flag == 5){
+//				//					moving_accel_6 = accel_angle;
+//				//					moving_accel_flag = 6;
+//				//				}
+//				//				else if(moving_accel_flag == 6){
+//				//					moving_accel_7 = accel_angle;
+//				//					moving_accel_flag = 7;
+//				//				}
+//				//				else if(moving_accel_flag ==7){
+//				//					moving_accel_8 = accel_angle;
+//				//					moving_accel_flag = 0;
+//				//				}
 //				if(moving_accel_1 && moving_accel_2 && moving_accel_3 && moving_accel_4){  //  && moving_accel_7 && moving_accel_8
 //					accel_angle = (moving_accel_1 + moving_accel_2 + moving_accel_3 + moving_accel_4)/4.0f;//  + moving_accel_7 + moving_accel_8
 //				}
@@ -1823,134 +1823,134 @@
 //			//					yo = 0;
 //			//				}
 //
-//			//			//						if((int32_t)(t-pt7) >= 100){
-//			//			if(t%100 == 0){
-//			//
-//			//				libsc::St7735r::Rect rect_;
-//			//
-//			//				for(int i=0;i<=128;i++){
-//			//					rect_.x = i;
-//			//					rect_.y = 160-(int)(old_pixel[i]*30/255.0f);
-//			//					rect_.w = 1;
-//			//					rect_.h = 1;
-//			//					lcd.SetRegion(rect_);
-//			//					lcd.FillColor(BLACK);
-//			//
-//			//
-//			//				}
-//			//
-//			//
-//			//
-//			//
-//			//
-//			//
-//			//				for(int i=0;i<=128;i++){
-//			//					rect_.x = i;
-//			//					rect_.y = 160-(int)(pixel[i]*30/255.0f);
-//			//					rect_.w = 1;
-//			//					rect_.h = 1;
-//			//					lcd.SetRegion(rect_);
-//			//					lcd.FillColor(GREEN);
-//			//				}
-//			//
-//			//				//				for(int i=0; i<127;i++){
-//			//				//
-//			//				//					if(pixel[i+1]>pixel[i] && i>=0){
-//			//				//						memory=pixel[i+1];
-//			//				//					}
-//			//				//				}
-//			//				console.SetTextColor(GREEN);
-//			//				console.SetCursorRow(0);
-//			//				sprintf(buffer, "l_edge:%d\nr_edge:%d\nCenterline:%d\nError:%.3f\nl_encoder:%d\nr_encoder:%d\n",l_edge,r_edge,center_line,now_center_line_error,il_encoder_error,ir_encoder_error);
-//			//				console.WriteString((char*)buffer);
-//			//
-//			//
-//			//
-//			//
-//			//
-//			//
-//			//
-//			//				old_pixel=pixel;
-//			//
-//			//				//				if(l_color_flag == white_black){
-//			//				//					if(r_color_flag == white_black){
-//			//				//						//reset the flag
-//			//				//
-//			//				//						rect_.x = 0;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = l_edge;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(BLACK);
-//			//				//
-//			//				//
-//			//				//						rect_.x = l_edge;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = r_edge - l_edge;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(WHITE);
-//			//				//
-//			//				//
-//			//				//						rect_.x = r_edge;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = 128 - r_edge;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(BLACK);
-//			//				//
-//			//				//
-//			//				//
-//			//				//					}
-//			//				//					else if(r_color_flag == half_white){
-//			//				//
-//			//				//
-//			//				//						rect_.x = 0;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = l_edge;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(BLACK);
-//			//				//						lcd_flag = 1;
-//			//				//
-//			//				//
-//			//				//						rect_.x = l_edge;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = 128 - l_edge;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(WHITE);
-//			//				//						lcd_flag = 0;
-//			//				//
-//			//				//					}
-//			//				//				}
-//			//				//				else if(l_color_flag == half_white){
-//			//				//					if(r_color_flag == white_black){
-//			//				//						rect_.x = 0;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = r_edge;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(WHITE);
-//			//				//
-//			//				//						rect_.x = r_edge;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = 128 - r_edge;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(BLACK);
-//			//				//					}
-//			//				//					else if(r_color_flag == half_white){
-//			//				//						rect_.x = 0;
-//			//				//						rect_.y = 130;
-//			//				//						rect_.w = 128;
-//			//				//						rect_.h = 16;
-//			//				//						lcd.SetRegion(rect_);
-//			//				//						lcd.FillColor(WHITE);
-//			//				//					}
-//			//				//				}
-//			//				//				pt7 = System::Time();
-//			//			}
+//						//						if((int32_t)(t-pt7) >= 100){
+//						if(t%100 == 0){
+//
+//							libsc::St7735r::Rect rect_;
+//
+//							for(int i=0;i<=128;i++){
+//								rect_.x = i;
+//								rect_.y = 160-(int)(old_pixel[i]*30/255.0f);
+//								rect_.w = 1;
+//								rect_.h = 1;
+//								lcd.SetRegion(rect_);
+//								lcd.FillColor(BLACK);
+//
+//
+//							}
+//
+//
+//
+//
+//
+//
+//							for(int i=0;i<=128;i++){
+//								rect_.x = i;
+//								rect_.y = 160-(int)(pixel[i]*30/255.0f);
+//								rect_.w = 1;
+//								rect_.h = 1;
+//								lcd.SetRegion(rect_);
+//								lcd.FillColor(GREEN);
+//							}
+//
+//							//				for(int i=0; i<127;i++){
+//							//
+//							//					if(pixel[i+1]>pixel[i] && i>=0){
+//							//						memory=pixel[i+1];
+//							//					}
+//							//				}
+//							console.SetTextColor(GREEN);
+//							console.SetCursorRow(0);
+//							sprintf(buffer, "l_edge:%d\nr_edge:%d\nCenterline:%d\nError:%.3f\nl_encoder:%d\nr_encoder:%d\n",l_edge,r_edge,center_line,now_center_line_error,il_encoder_error,ir_encoder_error);
+//							console.WriteString((char*)buffer);
+//
+//
+//
+//
+//
+//
+//
+//							old_pixel=pixel;
+//
+//							//				if(l_color_flag == white_black){
+//							//					if(r_color_flag == white_black){
+//							//						//reset the flag
+//							//
+//							//						rect_.x = 0;
+//							//						rect_.y = 130;
+//							//						rect_.w = l_edge;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(BLACK);
+//							//
+//							//
+//							//						rect_.x = l_edge;
+//							//						rect_.y = 130;
+//							//						rect_.w = r_edge - l_edge;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(WHITE);
+//							//
+//							//
+//							//						rect_.x = r_edge;
+//							//						rect_.y = 130;
+//							//						rect_.w = 128 - r_edge;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(BLACK);
+//							//
+//							//
+//							//
+//							//					}
+//							//					else if(r_color_flag == half_white){
+//							//
+//							//
+//							//						rect_.x = 0;
+//							//						rect_.y = 130;
+//							//						rect_.w = l_edge;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(BLACK);
+//							//						lcd_flag = 1;
+//							//
+//							//
+//							//						rect_.x = l_edge;
+//							//						rect_.y = 130;
+//							//						rect_.w = 128 - l_edge;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(WHITE);
+//							//						lcd_flag = 0;
+//							//
+//							//					}
+//							//				}
+//							//				else if(l_color_flag == half_white){
+//							//					if(r_color_flag == white_black){
+//							//						rect_.x = 0;
+//							//						rect_.y = 130;
+//							//						rect_.w = r_edge;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(WHITE);
+//							//
+//							//						rect_.x = r_edge;
+//							//						rect_.y = 130;
+//							//						rect_.w = 128 - r_edge;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(BLACK);
+//							//					}
+//							//					else if(r_color_flag == half_white){
+//							//						rect_.x = 0;
+//							//						rect_.y = 130;
+//							//						rect_.w = 128;
+//							//						rect_.h = 16;
+//							//						lcd.SetRegion(rect_);
+//							//						lcd.FillColor(WHITE);
+//							//					}
+//							//				}
+//							//				pt7 = System::Time();
+//						}
 //
 //		}
 //	}
