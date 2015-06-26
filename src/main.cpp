@@ -66,8 +66,11 @@ Mcg::Config Mcg::GetMcgConfig()
 }
 
 
-float ic_Kp = 2000;                   // Recommend 50
-float ic_Kd = 5000;            	    // Recommend 45
+float ic_Kp = 1500;                   // Recommend 50
+float ic_Kd = 5500;            	    // Recommend 45
+float ic_Ki = 50;
+
+float total_balance_error = 0;
 
 float is_Kp = 0.02;                  // Recommend 0.05
 float is_Ki = 0;
@@ -79,19 +82,20 @@ float speed_PID = 0;
 
 float turn_Kp = 0.8;         // Recommend
 //float turn_Ki = 0;
-float turn_Kd = 40;
+float turn_Kd = 0;
 
-float encoder_r_Kp = 1.2;        // Recommend 2
+float encoder_r_Kp = 1.5;        // Recommend 2
 //float encoder_r_Ki = 0.0;   // Recommend 0.0008
 float encoder_r_Kd = 0.0;
-float encoder_l_Kp = 2;        // Recommend 2
+float encoder_l_Kp = 3.5;        // Recommend 2
 //float encoder_l_Ki = 0.00;   // Recommend 0.0008
 float encoder_l_Kd = 0.0;
 
 float original_angle = 0;
 float anti_friction_angle = 0;
 float new_original_angle = 0;
-float turn = 0;
+float turn_l = 0;
+float turn_r = 0;
 float still_Ki = 0.000;
 float ratio_old = 0;
 float ratio_new = 1-ratio_old;
@@ -122,6 +126,7 @@ int16_t run = 0;
 
 //float ideal_speed = 10;
 std::array<uint16_t, Tsl1401cl::kSensorW> Data;
+std::array<uint16_t,Tsl1401cl::kSensorW> old_pixel;
 
 void SelectLeft(const uint8_t id)
 {
@@ -233,11 +238,11 @@ int main()
 	Joystick joy(joyconfig);
 
 	DirMotor::Config l_motor;
-	l_motor.id = 1;
+	l_motor.id = 0;
 	DirMotor motor_l(l_motor);
 
 	DirMotor::Config r_motor;
-	r_motor.id = 0;
+	r_motor.id = 1;
 	DirMotor motor_r(r_motor);
 
 	AbEncoder::Config enconfig;
@@ -254,6 +259,18 @@ int main()
 	config1.is_revert = false;
 	St7735r lcd(config1);
 
+	LcdConsole::Config yoyo;
+	yoyo.bg_color = 0;
+	yoyo.text_color = -1;
+	yoyo.lcd = &lcd;
+	LcdConsole console(yoyo);
+
+	LcdTypewriter::Config typeconfig;
+	typeconfig.lcd = &lcd;
+	typeconfig.bg_color = 0;
+	typeconfig.text_color = -1;
+	typeconfig.is_text_wrap = true;
+	LcdTypewriter type(typeconfig);
 	//    Led::Config led_config0;
 	//    led_config0.id = 0;
 	//    Led led0(led_config0);
@@ -388,65 +405,65 @@ int main()
 	//	pGrapher.addSharedVar(&turn_Kp,"turn_Kp");
 	//	pGrapher.addSharedVar(&turn_Kd,"turn_Kd");
 	while(1){
-		int a = 0;
-		while(1){
-
-
-			for(int i = 1;i < 1002;i++){
-				if(i == 1001){
-					for(int i = 1000;i > -1;i = i - 5){
-
-						if(i <= 0){
-							motor_l.SetPower(0);
-							motor_r.SetPower(0);
-							a = 2;
-							break;
-						}
-						encoder_r.Update();
-						encoder_l.Update();
-
-						motor_l.SetClockwise(sign);
-						motor_r.SetClockwise(!sign);
-						motor_l.SetPower(i);
-						motor_r.SetPower(i);
-
-						System::DelayMs(10);
-
-
-
-					}
-
-				}
-				if(a == 2){
-					return 0;
-				}
-				System::DelayMs(10);
-				encoder_r.Update();
-				encoder_l.Update();
-
-				motor_l.SetClockwise(sign);
-				motor_r.SetClockwise(!sign);
-				motor_l.SetPower(i);
-				motor_r.SetPower(i);
-
-				System::DelayMs(1);
-
-				encoder_r.Update();
-				encoder_l.Update();
-
-				count_r = (int32_t)(-encoder_r.GetCount());
-				count_l = (int32_t)(encoder_l.GetCount());
-
-				int16_t n = sprintf(buffer, "%d, %d\n",i,count_l); //power:%d, encoder_l:%d\n
-				bt.SendBuffer((Byte*)buffer,n);
-				memset(buffer, 0, n);
-
-			}
-
-
-
-
-		}
+		//		int a = 0;
+		//		while(1){
+		//
+		//
+		//			for(int i = 1;i < 1002;i++){
+		//				if(i == 1001){
+		//					for(int i = 1000;i > -1;i = i - 5){
+		//
+		//						if(i <= 0){
+		//							motor_l.SetPower(0);
+		//							motor_r.SetPower(0);
+		//							a = 2;
+		//							break;
+		//						}
+		//						encoder_r.Update();
+		//						encoder_l.Update();
+		//
+		//						motor_l.SetClockwise(sign);
+		//						motor_r.SetClockwise(!sign);
+		//						motor_l.SetPower(i);
+		//						motor_r.SetPower(i);
+		//
+		//						System::DelayMs(10);
+		//
+		//
+		//
+		//					}
+		//
+		//				}
+		//				if(a == 2){
+		//					return 0;
+		//				}
+		//				System::DelayMs(10);
+		//				encoder_r.Update();
+		//				encoder_l.Update();
+		//
+		//				motor_l.SetClockwise(sign);
+		//				motor_r.SetClockwise(!sign);
+		//				motor_l.SetPower(i);
+		//				motor_r.SetPower(i);
+		//
+		//				System::DelayMs(1);
+		//
+		//				encoder_r.Update();
+		//				encoder_l.Update();
+		//
+		//				count_r = (int32_t)(-encoder_r.GetCount());
+		//				count_l = (int32_t)(encoder_l.GetCount());
+		//
+		//				int16_t n = sprintf(buffer, "%d, %d\n",i,count_l); //power:%d, encoder_l:%d\n
+		//				bt.SendBuffer((Byte*)buffer,n);
+		//				memset(buffer, 0, n);
+		//
+		//			}
+		//
+		//
+		//
+		//
+		//		}
 
 		if(t !=System::Time()){
 			t = System::Time();
@@ -578,6 +595,8 @@ int main()
 				angle_error_change = now_angle_error -last_angle_error;
 
 
+
+
 				ideal_count = ic_Kp * now_angle_error  + ic_Kd * angle_error_change;
 			}
 
@@ -642,8 +661,8 @@ int main()
 				//					else
 				//						power_l -= turn;
 
-				speed_r = 2.0*(power_r + turn);//1.9113f *
-				speed_l = 2.0*(power_l - turn);//1.6769f *
+				speed_r = 1.7 * power_r * turn_r;//1.9113f *
+				speed_l = 1.95 * power_r * turn_l;//1.6769f *
 
 				if(speed_l >= 0)
 					sign = 0;
@@ -663,8 +682,8 @@ int main()
 				else if(speed_r < -900)
 					speed_r = -900;
 
-				motor_l.SetPower(int(abs(speed_l) + 41.38f));
-				motor_r.SetPower(int(abs(speed_r) + 40.0f));
+				motor_l.SetPower(int(abs(speed_l) + 25.0f));
+				motor_r.SetPower(int(abs(speed_r) + 25.0f));
 			}
 
 
@@ -840,7 +859,8 @@ int main()
 				//						turn[1] = 0;
 				//				}
 
-				turn = hehe * turn_error + turn_error_change * turn_Kd;//->GetReal();
+				turn_l = 1 - hehe * turn_error + turn_error_change * turn_Kd;//->GetReal();
+				turn_r = 1 + hehe * turn_error + turn_error_change * turn_Kd;//->GetReal();
 			}
 
 
@@ -984,8 +1004,8 @@ int main()
 				//					else
 				//						power_l -= turn;
 
-				speed_r = 2.0*(power_r + turn);//1.9113f *
-				speed_l = 2.0*(power_l - turn);//1.6769f *
+				speed_r = 1.7 * power_r * turn_r;//1.9113f *
+				speed_l = 1.95 * power_r * turn_l;//1.6769f *
 
 				if(speed_l >= 0)
 					sign = 0;
@@ -1005,142 +1025,170 @@ int main()
 				else if(speed_r < -900)
 					speed_r = -900;
 
-				motor_l.SetPower(int(abs(speed_l) + 41.38f));
-				motor_r.SetPower(int(abs(speed_r) + 40.0f));
+				motor_l.SetPower(int(abs(speed_l) + 25.0f));
+				motor_r.SetPower(int(abs(speed_r) + 25.0f));
 			}
 
 
 			if((int32_t)(t-pt4) >= 1 && yo == 4){
 				pt5 = System::Time(); //?
 				yo =0;
-				encoder_r.Update();
-				encoder_l.Update();
-				count += (int32_t)(encoder_l.GetCount());
-
-				count_r = (int32_t)(-encoder_r.GetCount());
-				count_l = (int32_t)(encoder_l.GetCount());
-
-				total_count_l += (float)count_l * 0.001;
-				total_count_r += (float)count_r * 0.001;
-
-				last_ir_encoder_error = ir_encoder_error;
-				ir_encoder_error = ideal_count - count_r;
-				last_il_encoder_error = il_encoder_error;
-				il_encoder_error = ideal_count - count_l;
-
-				speed = (count_l + count_r)/ 2;
-
-				last_speed_error = speed_error;
-				speed_error = ideal_speed - speed;
-
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-				il_encoder_errorsum += (float)il_encoder_error * 0.001;
-
-				printf("%f, %f, %f, %f\n", ideal_count, turn,  speed_r, speed_l);
+				//				encoder_r.Update();
+				//				encoder_l.Update();
+				//				count += (int32_t)(encoder_l.GetCount());
+				//
+				//				count_r = (int32_t)(-encoder_r.GetCount());
+				//				count_l = (int32_t)(encoder_l.GetCount());
+				//
+				//				total_count_l += (float)count_l * 0.001;
+				//				total_count_r += (float)count_r * 0.001;
+				//
+				//				last_ir_encoder_error = ir_encoder_error;
+				//				ir_encoder_error = ideal_count - count_r;
+				//				last_il_encoder_error = il_encoder_error;
+				//				il_encoder_error = ideal_count - count_l;
+				//
+				//				speed = (count_l + count_r)/ 2;
+				//
+				//				last_speed_error = speed_error;
+				//				speed_error = ideal_speed - speed;
+				//
+				//				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
+				//				il_encoder_errorsum += (float)il_encoder_error * 0.001;
+				//
+				//				printf("%f, %f, %f, %f\n", ideal_count, turn,  speed_r, speed_l);
 
 			}
 
-			//			if((int)(t - pt7) >= 1000)
-			//			{
-			//				pt7 = t;
+			//			if(t%100 == 0){
 			//
-			//				// Change print mode while running
-			//				if (button0.IsDown())
-			//				{
-			//					led0.Switch();
-			//					print_data = !print_data;
+			//				libsc::St7735r::Rect rect_;
+			//
+			//				for(int i=0;i<=128;i++){
+			//					rect_.x = i;
+			//					rect_.y = 160-(int)(old_pixel[i]*30/255.0f);
+			//					rect_.w = 1;
+			//					rect_.h = 1;
+			//					lcd.SetRegion(rect_);
+			//					lcd.FillColor(BLACK);
+			//
+			//
 			//				}
 			//
 			//
-			//				// Enable print mode without running
-			//				else if(button1.IsDown())
-			//				{
-			//					led1.Switch();
-			//					float average = 0;
-			//					while(1)
-			//					{
-			//						t = System::Time();
 			//
-			//						if((int)(t - pt) >= 6)
-			//						{
-			//							pt = t;
-			//							ccd_counter++;
 			//
-			//							ccd.StartSample();
-			//							while (!ccd.SampleProcess()){}
-			//							Data = ccd.GetData();
 			//
-			//							uint32_t sum = 0;
 			//
-			//							for(int i = 0; i < Tsl1401cl::kSensorW; i++){
-			//								Data[i] = Data[i] * 4;
-			//								sum += Data[i];
-			//							}
+			//				for(int i=0;i<=128;i++){
+			//					rect_.x = i;
+			//					rect_.y = 160-(int)(Data[i]*30/255.0f);
+			//					rect_.w = 1;
+			//					rect_.h = 1;
+			//					lcd.SetRegion(rect_);
+			//					lcd.FillColor(GREEN);
+			//				}
 			//
-			//							average = sum / Tsl1401cl::kSensorW;
-			//							if(average > 72)
-			//								average = 72;
-			//							else if(average < 35)
-			//								average = 35;
-			//							else
-			//								average = average + 3;
+			//				//				for(int i=0; i<127;i++){
+			//				//
+			//				//					if(pixel[i+1]>pixel[i] && i>=0){
+			//				//						memory=pixel[i+1];
+			//				//					}
+			//				//				}
+			//				console.SetTextColor(GREEN);
+			//				console.SetCursorRow(0);
+			//				sprintf(buffer, "l_edge:%d\nr_edge:%d\nCenterline:%d\nError:%.3f\nl_encoder:%d\nr_encoder:%d\n",l_edge,r_edge,center_line,now_center_line_error,il_encoder_error,ir_encoder_error);
+			//				console.WriteString((char*)buffer);
 			//
-			//						}
 			//
-			//						if (ccd_counter >= 15){
-			//							ccd_counter = 0;
-			//							St7735r::Rect rect_1, rect_2, rect_3, rect_4;
-			//							for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-			//								rect_1.x = i;
-			//								rect_1.y = 0;
-			//								rect_1.w = 1;
-			//								rect_1.h = Data[i];
-			//								rect_2.x = i;
-			//								rect_2.y = Data[i];
-			//								rect_2.w = 1;
-			//								rect_2.h = 80 - Data[i];
-			//								lcd.SetRegion(rect_1);
-			//								lcd.FillColor(~0);
-			//								lcd.SetRegion(rect_2);
-			//								lcd.FillColor(0);
-			//							}
-			//							for(int i=0; i<Tsl1401cl::kSensorW; i++){
-			//								if(Data[i] < average)
-			//									Data[i] = 0;
-			//								else
-			//									Data[i] = 60;
-			//							}
 			//
-			//							for(int i = 0; i<Tsl1401cl::kSensorW; i++){
-			//								rect_3.x = i;
-			//								rect_3.y = 90;
-			//								rect_3.w = 1;
-			//								rect_3.h = Data[i];
-			//								rect_4.x = i;
-			//								rect_4.y = 90 + Data[i];
-			//								rect_4.w = 1;
-			//								rect_4.h = 60 - Data[i];
-			//								lcd.SetRegion(rect_3);
-			//								lcd.FillColor(~0);
-			//								lcd.SetRegion(rect_4);
-			//								lcd.FillColor(0);
-			//							}
-			//						}
 			//
-			//						// Break the mode that print pixels without running
-			//						if((int)(t - pt8) >= 1000){
-			//							pt8 = t;
-			//							if(button1.IsDown())
-			//							{
-			//								led1.Switch();
-			//								break;
-			//							}
-			//						}
+			//
+			//
+			//for(int i = 0;i < 128;i++){
+			//	old_pixel[i] = Data[i];
+			//}
+
+
+			//				if(l_color_flag == white_black){
+			//					if(r_color_flag == white_black){
+			//						//reset the flag
+			//
+			//						rect_.x = 0;
+			//						rect_.y = 130;
+			//						rect_.w = l_edge;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(BLACK);
+			//
+			//
+			//						rect_.x = l_edge;
+			//						rect_.y = 130;
+			//						rect_.w = r_edge - l_edge;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(WHITE);
+			//
+			//
+			//						rect_.x = r_edge;
+			//						rect_.y = 130;
+			//						rect_.w = 128 - r_edge;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(BLACK);
+			//
 			//
 			//
 			//					}
+			//					else if(r_color_flag == half_white){
+			//
+			//
+			//						rect_.x = 0;
+			//						rect_.y = 130;
+			//						rect_.w = l_edge;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(BLACK);
+			//						lcd_flag = 1;
+			//
+			//
+			//						rect_.x = l_edge;
+			//						rect_.y = 130;
+			//						rect_.w = 128 - l_edge;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(WHITE);
+			//						lcd_flag = 0;
+			//
+			//					}
 			//				}
-			//			}
+			//				else if(l_color_flag == half_white){
+			//					if(r_color_flag == white_black){
+			//						rect_.x = 0;
+			//						rect_.y = 130;
+			//						rect_.w = r_edge;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(WHITE);
+			//
+			//						rect_.x = r_edge;
+			//						rect_.y = 130;
+			//						rect_.w = 128 - r_edge;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(BLACK);
+			//					}
+			//					else if(r_color_flag == half_white){
+			//						rect_.x = 0;
+			//						rect_.y = 130;
+			//						rect_.w = 128;
+			//						rect_.h = 16;
+			//						lcd.SetRegion(rect_);
+			//						lcd.FillColor(WHITE);
+			//					}
+			//				}
+			//				pt7 = System::Time();
+			//		}
 
 		}
 	}
