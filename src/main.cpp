@@ -69,6 +69,8 @@ Mcg::Config Mcg::GetMcgConfig()
 float ic_Kp = 1500;                   // Recommend 50
 float ic_Kd = 5500;            	    // Recommend 45
 float ic_Ki = 50;
+float angle_total_error = 0;
+float total_const = 0;
 
 float total_balance_error = 0;
 
@@ -80,7 +82,7 @@ float speed_Kd = 0;
 float ideal_speed = 50;
 float speed_PID = 0;
 
-float turn_Kp = 0.8;         // Recommend
+float turn_Kp = 0.2;         // Recommend
 //float turn_Ki = 0;
 float turn_Kd = 0;
 
@@ -172,12 +174,12 @@ int main()
 	RemoteVarManager* varmanager = new RemoteVarManager(4);
 
 	//	Initalize the BT module
-	JyMcuBt106::Config bt_config;
-	bt_config.id = 0;
-	bt_config.rx_irq_threshold = 2;
-	bt_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
-	bt_config.rx_isr = std::bind(&RemoteVarManager::OnUartReceiveChar, varmanager, std::placeholders::_1);
-	JyMcuBt106 bt(bt_config);
+	//	JyMcuBt106::Config bt_config;
+	//	bt_config.id = 0;
+	//	bt_config.rx_irq_threshold = 2;
+	//	bt_config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
+	//	bt_config.rx_isr = std::bind(&RemoteVarManager::OnUartReceiveChar, varmanager, std::placeholders::_1);
+	//	JyMcuBt106 bt(bt_config);
 
 
 
@@ -296,7 +298,7 @@ int main()
 		mma8451q.Update();
 		System::DelayMs(4);
 		accel = mma8451q.GetAccel();
-		raw_angle = accel[1]*57.29578 + 0.7f;
+		raw_angle = accel[1]*57.2957f;
 		t = System::Time();
 		if((t-pt)>=2000)
 			break;
@@ -370,7 +372,7 @@ int main()
 	encoder_r.Update();               //to reset the count
 	encoder_l.Update();
 
-	//	MyVarManager pGrapher;
+	MyVarManager pGrapher;
 	//	//graph testing variable
 	//
 	//
@@ -379,7 +381,7 @@ int main()
 	//	//	pGrapher.addWatchedVar(&ir_encoder_error,"ir_encoder_error");
 	//	//		pGrapher.addWatchedVar(&angle_error_change,"angle_error_change");
 	//	pGrapher.addWatchedVar(&original_angle,"original_angle");
-	//	pGrapher.addWatchedVar(&gyro_angle,"gyro_angle");
+	pGrapher.addWatchedVar(&gyro_angle,"gyro_angle");
 	//	pGrapher.addWatchedVar(&count_l,"count_l");
 	//	pGrapher.addWatchedVar(&count_r,"count_r");
 	//	pGrapher.addWatchedVar(&ideal_count,"ideal_count");
@@ -398,12 +400,12 @@ int main()
 	//
 	//
 	//	pGrapher.addSharedVar(&encoder_l_Kp,"encoder_l_Kp");
-	//	pGrapher.addSharedVar(&encoder_l_Kd,"encoder_l_Kd");
-	//	pGrapher.addSharedVar(&encoder_r_Kp,"encoder_r_Kp");
-	//	pGrapher.addSharedVar(&encoder_r_Kd,"encoder_r_Kd");
-	//	//	pGrapher.addSharedVar(&ideal_speed,"ideal_speed");
-	//	pGrapher.addSharedVar(&turn_Kp,"turn_Kp");
-	//	pGrapher.addSharedVar(&turn_Kd,"turn_Kd");
+		pGrapher.addSharedVar(&ic_Kd,"ic_Kd");
+		pGrapher.addSharedVar(&ic_Kp,"ic_Kp");
+	pGrapher.addSharedVar(&ic_Ki,"ic_Ki");
+	pGrapher.addSharedVar(&total_const,"total_const");
+	pGrapher.addSharedVar(&turn_Kp,"turn_Kp");
+	pGrapher.addSharedVar(&turn_Kd,"turn_Kd");
 	while(1){
 		//		int a = 0;
 		//		while(1){
@@ -528,7 +530,7 @@ int main()
 
 
 				if(blue_flag == 0){
-					//					pGrapher.sendWatchData();
+					pGrapher.sendWatchData();
 					//					int16_t n = sprintf(buffer, "ha \n");
 					//					fu.SendBuffer((Byte*)buffer,n);
 					//					memset(buffer, 0, n);
@@ -594,10 +596,13 @@ int main()
 				now_angle_error = tan((original_angle - output_angle) / 57.29578);
 				angle_error_change = now_angle_error -last_angle_error;
 
+				angle_total_error += now_angle_error;
+				if(angle_total_error > total_const){
+					angle_total_error = total_const;
+				}
 
 
-
-				ideal_count = ic_Kp * now_angle_error  + ic_Kd * angle_error_change;
+				ideal_count = ic_Kp * now_angle_error  + ic_Kd * angle_error_change + ic_Ki * angle_total_error;
 			}
 
 
@@ -860,7 +865,19 @@ int main()
 				//				}
 
 				turn_l = 1 - hehe * turn_error + turn_error_change * turn_Kd;//->GetReal();
+				if(turn_l <= 0){
+					turn_l = 0;
+				}
+				else if(turn_l >= 2){
+					turn_l = 0;
+				}
 				turn_r = 1 + hehe * turn_error + turn_error_change * turn_Kd;//->GetReal();
+				if(turn_r <= 0){
+					turn_r = 0;
+				}
+				else if(turn_r >= 2){
+					turn_r = 0;
+				}
 			}
 
 
@@ -936,10 +953,13 @@ int main()
 				angle_error_change = now_angle_error -last_angle_error;
 
 
+				angle_total_error += now_angle_error;
+				if(angle_total_error > total_const){
+					angle_total_error = total_const;
+				}
 
 
-
-				ideal_count = ic_Kp * now_angle_error  + ic_Kd * angle_error_change;
+				ideal_count = ic_Kp * now_angle_error  + ic_Kd * angle_error_change + ic_Ki * angle_total_error;
 			}
 
 
