@@ -69,13 +69,12 @@ Mcg::Config Mcg::GetMcgConfig()
 }
 
 
-float ic_Kp = 1320.0f;                   // Recommend 50
-float ic_Kd = 6000.0f;            	    // Recommend 45
-float ic_Ki = 50;
+float ic_Kp = 1300.0f;                   // Recommend 50
+float ic_Kd = 11000.0f;            	    // Recommend 45
+float ic_Ki = 100;
 
 float is_Kp = 0.0;                  // Recommend 0.05
 float is_Ki = 0;
-
 float is_Kd = 0.00;
 float speed_Kp = 0;
 float speed_Kd = 0;
@@ -98,7 +97,6 @@ float original_angle = 0;
 float anti_friction_angle = 0;
 float new_original_angle = 0;
 float turn = 0.0f;
-float still_Ki = 0.000;
 float ratio_old = 0;
 float power_l = 0.0f;
 float power_r = 0.0f;
@@ -113,7 +111,7 @@ Kalman speedKF(0.0001, _R, 0, 1);
 int32_t count_l =0;
 int32_t count_r =0;
 
-int mid_point = 0;
+int mid_point = 63;
 uint16_t ccd_average = 0;
 int border_r = Tsl1401cl::kSensorW - 11, border_l = 10;
 
@@ -133,9 +131,7 @@ int up_r_standard_border = 0;		// undefined
 int down_l_standard_border = 0;		// undefined
 int down_r_standard_border = 0;		// undefined
 int up_border_l = 0;
-int last_up_border_l = 0;
 int up_border_r = 0;
-int last_up_border_r = 0;
 int up_ccd_average = 0;
 int up_white_count = 0;
 int up_white_count_up_limit = 0;
@@ -214,12 +210,12 @@ int main()
 	RemoteVarManager::Var* turn_Kp = varmanager->Register("turn_Kp",RemoteVarManager::Var::Type::kReal);
 	RemoteVarManager::Var* turn_Kd = varmanager->Register("turn_Kd",RemoteVarManager::Var::Type::kReal);
 	RemoteVarManager::Var* is_Kp = varmanager->Register("is_Kp",RemoteVarManager::Var::Type::kReal);
-	RemoteVarManager::Var* is_Kd = varmanager->Register("is_Kd",RemoteVarManager::Var::Type::kReal);
+	RemoteVarManager::Var* is_Ki = varmanager->Register("is_Ki",RemoteVarManager::Var::Type::kReal);
 
 	printf("turn_Kp,real,0,0\n");
 	printf("turn_Kd,real,1,0\n");
 	printf("is_Kp,real,2,0\n");
-	printf("is_Kd,real,3,0\n");
+	printf("is_Ki,real,3,0\n");
 
 
 
@@ -524,12 +520,12 @@ int main()
 			    speed_error_change = (speed_error - last_speed_error);  // Delayed error change
 //				last_speed_error = speed_error;
 				speed_error = ideal_speed - speed;
-				speed_error_sum += speed_error * 0.0035;
+				speed_error_sum += speed_error;
 
 			    if(ideal_speed != 0)
 			    	anti_friction_angle = ideal_speed * 0.0017f;
 			    original_angle = raw_angle - anti_friction_angle -
-			    		libutil::Clamp<float>(-5.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd->GetReal() * speed_error_change + is_Ki * speed_error_sum, 5.0f);
+			    		libutil::Clamp<float>(-4.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd * speed_error_change + is_Ki->GetReal() * speed_error_sum, 4.0f);
 			    last_speed_error = 0.8f * speed_error + 0.2f * last_speed_error;
 			    anti_friction_angle = 0;
 
@@ -547,8 +543,16 @@ int main()
 				//			    speed_r = 1.935 *(power_r + turn);
 				//			    speed_l = 1.745 *(power_l - turn);
 
-				speed_r = 1.935 * power_r * (1 + libutil::Clamp<float>(-1.0f, turn, 10.0f));
-				speed_l = 1.745 * power_l * (1 - libutil::Clamp<float>(-10.0f, turn, 1.0f));
+			    if(right_angle == 11)
+			    {
+			    	if(turn_direction == RIGHT)
+			    		turn = -1.0f;
+			    	else if(turn_direction == LEFT)
+			    		turn = 1.0f;
+			    }
+
+				speed_r = 1.935 * power_r * (1 + libutil::Clamp<float>(-0.8f, turn, 1.0f));
+				speed_l = 1.745 * power_l * (1 - libutil::Clamp<float>(-1.0f, turn, 0.8f));
 
 			    if(speed_l >= 0)
 			    	sign = 0;
@@ -568,25 +572,8 @@ int main()
 			    else if(speed_r < -900)
 			    	speed_r = -900;
 
-//			    if(right_angle == 11)
-//			    {
-//			    	if(turn_direction == RIGHT)
-//			    	{
-//			    		motor_r.SetPower(0);
-//			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
-//			    	}
-//			    	else if(turn_direction == LEFT)
-//			    	{
-//			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
-//			    		motor_l.SetPower(0);
-//			    	}
-//			    }
-//
-//			    else
-//			    {
-			    	motor_l.SetPower(int(abs(speed_l) + 25.3f));
-			    	motor_r.SetPower(int(abs(speed_r) + 27.6f));
-//			    }
+			    motor_l.SetPower(int(abs(speed_l) + 25.3f));
+			    motor_r.SetPower(int(abs(speed_r) + 27.6f));
 			}
 
 
@@ -711,7 +698,7 @@ int main()
 					// right_angle self-correcting
 					if(right_angle == 10)
 					{
-						if(abs(up_border_r - up_r_standard_border) <= 3 && abs(up_border_l - up_l_standard_border) <= 3)
+						if((up_border_r - up_border_l) <= 65)
 							right_angle = 00;
 					}
 
@@ -807,7 +794,7 @@ int main()
 						}
 					}
 
-					else if(right_angle == 10 && white_count <= 60)
+					else if(right_angle == 10 && white_count <= 30)
 						right_angle = 11;
 
 					else{
@@ -963,6 +950,9 @@ int main()
 				float turn_error_change = turn_error - last_turn_error;
 				float hehe = turn_Kp->GetReal();
 
+				if(cross == 11 || right_angle == 10)
+					hehe = hehe / 10;
+
 				turn = 0.0f;
 				turn_count++;
 				if(turn_count >= 2)
@@ -970,6 +960,9 @@ int main()
 					turn_count = 0;
 					turn = hehe * turn_error + turn_error_change * turn_Kd->GetReal();
 				}
+
+				if (speed < 0)
+					turn = - turn;
 			}
 
 
@@ -1050,11 +1043,12 @@ int main()
 			    speed_error_change = (speed_error - last_speed_error);  // Delayed error change
 //				last_speed_error = speed_error;
 				speed_error = ideal_speed - speed;
+				speed_error_sum += speed_error;
 
 			    if(ideal_speed != 0)
 			    	anti_friction_angle = ideal_speed * 0.0017f;
 			    original_angle = raw_angle - anti_friction_angle -
-			    		libutil::Clamp<float>(-5.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd->GetReal() * speed_error_change + is_Ki * speed_error_sum, 5.0f);
+			    		libutil::Clamp<float>(-4.0f, is_Kp->GetReal() * (0.8f * speed_error + 0.2f * last_speed_error) + is_Kd * speed_error_change + is_Ki->GetReal() * speed_error_sum, 4.0f);
 
 			    anti_friction_angle = 0;
 
@@ -1072,8 +1066,16 @@ int main()
 //			    speed_r = 1.935 *(power_r + turn);
 //			    speed_l = 1.745 *(power_l - turn);
 
-				speed_r = 1.935 * power_r * (1 + libutil::Clamp<float>(-1.0f, turn, 10.0f));
-				speed_l = 1.745 * power_l * (1 - libutil::Clamp<float>(-10.0f, turn, 1.0f));
+			    if(right_angle == 11)
+			    {
+			    	if(turn_direction == RIGHT)
+			    		turn = -1.0f;
+			    	else if(turn_direction == LEFT)
+			    		turn = 1.0f;
+			    }
+
+				speed_r = 1.935 * power_r * (1 + libutil::Clamp<float>(-0.8f, turn, 1.0f));
+				speed_l = 1.745 * power_l * (1 - libutil::Clamp<float>(-1.0f, turn, 0.8f));
 
 			    if(speed_l >= 0)
 			    	sign = 0;
@@ -1093,25 +1095,8 @@ int main()
 			    else if(speed_r < -900)
 			    	speed_r = -900;
 
-//			    if(right_angle == 11)
-//			    {
-//			    	if(turn_direction == RIGHT)
-//			    	{
-//			    		motor_r.SetPower(0);
-//			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
-//			    	}
-//			    	else if(turn_direction == LEFT)
-//			    	{
-//			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
-//			    		motor_l.SetPower(0);
-//			    	}
-//			    }
-//
-//			    else
-//			    {
-			    	motor_l.SetPower(int(abs(speed_l) + 25.3f));
-			    	motor_r.SetPower(int(abs(speed_r) + 27.6f));
-//			    }
+			    motor_l.SetPower(int(abs(speed_l) + 25.3f));
+			    motor_r.SetPower(int(abs(speed_r) + 27.6f));
 			}
 
 
