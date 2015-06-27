@@ -69,8 +69,8 @@ Mcg::Config Mcg::GetMcgConfig()
 }
 
 
-float ic_Kp = 1500.0f;                   // Recommend 50
-float ic_Kd = 5500.0f;            	    // Recommend 45
+float ic_Kp = 1320.0f;                   // Recommend 50
+float ic_Kd = 6000.0f;            	    // Recommend 45
 float ic_Ki = 50;
 
 float is_Kp = 0.0;                  // Recommend 0.05
@@ -119,6 +119,7 @@ int border_r = Tsl1401cl::kSensorW - 11, border_l = 10;
 
 float ideal_count = 0;
 std::array<uint16_t, Tsl1401cl::kSensorW> Data;
+std::array<uint16_t, Tsl1401cl::kSensorW> U_Data;
 std::array<uint16_t, Tsl1401cl::kSensorW> F_Data;
 std::array<uint16_t, Tsl1401cl::kSensorW> A_Data;
 
@@ -298,6 +299,8 @@ int main()
 	buzzer_config.is_active_low = 1;
 	SimpleBuzzer buzzer(buzzer_config);
 
+	buzzer.SetBeep(0);
+
 	float angle_offset;
 
 	System::DelayMs(25);
@@ -378,11 +381,9 @@ int main()
 	uint32_t pt6 = 0;
 	uint32_t pt7 = 0;
 	uint32_t pt8 = 0;
-	uint32_t right_angle_time = 0;
 
 
 	int sign = 0;
-	int last_ideal_count = 0;
 	int ccd_counter = 0;
 	bool print_data = false;
 	int white_count = 0;
@@ -460,27 +461,16 @@ int main()
 				encoder_r.Update();
 				encoder_l.Update();
 
-				count += (int32_t)(encoder_l.GetCount());
-
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
 
-				total_count_l += (float)count_l * 0.001;
-				total_count_r += (float)count_r * 0.001;
-
-				last_ir_encoder_error = ir_encoder_error;
 				ir_encoder_error = ideal_count - count_r;
-				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
 				speed = (count_l + count_r)/ 2;
 
 				last_speed_error = speed_error;
 				speed_error = ideal_speed - speed;
-
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-				il_encoder_errorsum += (float)il_encoder_error * 0.001;
-
 
 				mpu6050.Update();
 				mma8451q.Update();
@@ -518,22 +508,14 @@ int main()
 
 
 			if((int32_t)(t-pt1) >= 1 && yo ==1){
-				//				lincoln.Turn();
 				pt2=System::Time();
-
-				//				pt1 = t;
 				yo = 2;
 
 				encoder_r.Update();
 				encoder_l.Update();
 
-				count += (int32_t)(encoder_l.GetCount());
-
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
-
-				total_count_l += (float)count_l * 0.001;
-				total_count_r += (float)count_r * 0.001;
 
 				speed = (count_l + count_r)/ 2;
 				double _temp = 0;
@@ -551,13 +533,8 @@ int main()
 			    last_speed_error = 0.8f * speed_error + 0.2f * last_speed_error;
 			    anti_friction_angle = 0;
 
-			    last_ir_encoder_error = ir_encoder_error;
 			    ir_encoder_error = ideal_count - count_r;
-			    last_il_encoder_error = il_encoder_error;
 			    il_encoder_error = ideal_count - count_l;
-
-			    ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-			    il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
 			    speed_PID = ideal_speed + speed_Kp * speed_error + speed_Kd * speed_error_change;
 
@@ -567,13 +544,11 @@ int main()
 				power_r = ideal_count - speed_PID + (float)ir_encoder_error * encoder_r_Kp;
 				power_l = ideal_count - speed_PID + (float)il_encoder_error * encoder_l_Kp;
 
-			    //					if(turn > 0)
-			    //						power_r += turn;
-			    //					else
-			    //						power_l -= turn;
+				//			    speed_r = 1.935 *(power_r + turn);
+				//			    speed_l = 1.745 *(power_l - turn);
 
-			    speed_r = 1.935 *(power_r + turn);
-			    speed_l = 1.745 *(power_l - turn);
+				speed_r = 1.935 * power_r * (1 + libutil::Clamp<float>(-1.0f, turn, 10.0f));
+				speed_l = 1.745 * power_l * (1 - libutil::Clamp<float>(-10.0f, turn, 1.0f));
 
 			    if(speed_l >= 0)
 			    	sign = 0;
@@ -593,25 +568,25 @@ int main()
 			    else if(speed_r < -900)
 			    	speed_r = -900;
 
-			    if(right_angle == 11)
-			    {
-			    	if(turn_direction == RIGHT)
-			    	{
-			    		motor_r.SetPower(0);
-			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
-			    	}
-			    	else if(turn_direction == LEFT)
-			    	{
-			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
-			    		motor_l.SetPower(0);
-			    	}
-			    }
-
-			    else
-			    {
+//			    if(right_angle == 11)
+//			    {
+//			    	if(turn_direction == RIGHT)
+//			    	{
+//			    		motor_r.SetPower(0);
+//			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
+//			    	}
+//			    	else if(turn_direction == LEFT)
+//			    	{
+//			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
+//			    		motor_l.SetPower(0);
+//			    	}
+//			    }
+//
+//			    else
+//			    {
 			    	motor_l.SetPower(int(abs(speed_l) + 25.3f));
 			    	motor_r.SetPower(int(abs(speed_r) + 27.6f));
-			    }
+//			    }
 			}
 
 
@@ -620,21 +595,15 @@ int main()
 				pt0 = System::Time();
 				yo = 8;
 
-				buzzer.SetBeep(0);
+				buzzer.SetBeep(1);
 
 				encoder_r.Update();
 				encoder_l.Update();
-				count += (int32_t)(encoder_l.GetCount());
 
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
 
-				total_count_l += (float)count_l * 0.001;
-				total_count_r += (float)count_r * 0.001;
-
-				last_ir_encoder_error = ir_encoder_error;
 				ir_encoder_error = ideal_count - count_r;
-				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
 				speed = (count_l + count_r)/ 2;
@@ -642,31 +611,28 @@ int main()
 				last_speed_error = speed_error;
 				speed_error = ideal_speed - speed;
 
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-				il_encoder_errorsum += (float)il_encoder_error * 0.001;
-
 				// For the top CCD to prediction
 				if(up_ccd == 1)
 				{
 					up_ccd = 0;
 					while(! ccd_up.SampleProcess()){};
-					A_Data = ccd_up.GetData();  // 0 - 127 is left to right from the view of CCD
+					U_Data = ccd_up.GetData();  // 0 - 127 is left to right from the view of CCD
 					ccd_up.StartSample();
 					uint32_t ccd_sum = 0;
 
 					for(int i = 15; i < Tsl1401cl::kSensorW - 15; i++){
-						ccd_sum += A_Data[i];
+						ccd_sum += U_Data[i];
 					}
 					up_ccd_average = ccd_sum / (Tsl1401cl::kSensorW - 30);    // print
 
-					if(up_ccd_average > 160)
+					if(up_ccd_average > 200)
 						up_ccd_average = up_ccd_average - 10;
-					else if(up_ccd_average < 140)
+					else if(up_ccd_average < 180)
 						up_ccd_average = up_ccd_average + 10;
 
 					up_white_count = 0;
 					for(int i = 15; i < Tsl1401cl::kSensorW - 15; i++){
-						if(A_Data[i] < up_ccd_average)
+						if(U_Data[i] < up_ccd_average)
 							A_Data[i] = 0;
 						else
 						{
@@ -679,10 +645,10 @@ int main()
 					{
 						cross = 10;
 						right_angle = 00;
-						buzzer.SetBeep(1);
+						buzzer.SetBeep(0);
 					}
 
-					if(cross == 10 && up_white_count <= 82)
+					if(cross == 10 && up_white_count <= 55)         // normally wide is 55
 						cross = 00;
 
 					for(int i = up_mid_point; i >= 15; i--)
@@ -709,7 +675,7 @@ int main()
 						{
 							right_angle = 10;
 							turn_direction = RIGHT;
-							buzzer.SetBeep(1);
+							buzzer.SetBeep(0);
 							// Change other states to 0
 						}
 
@@ -771,12 +737,12 @@ int main()
 						F_Data[i] = Data[i];
 						ccd_sum += Data[i];
 					}
-					Pixel_filter(F_Data);
+//					Pixel_filter(F_Data);
 					ccd_average = ccd_sum / (Tsl1401cl::kSensorW - 14);    // print
 
-					if(ccd_average > 160)
+					if(ccd_average > 220)
 						ccd_average = ccd_average - 10;
-					else if(ccd_average < 140)
+					else if(ccd_average < 200)
 						ccd_average = ccd_average + 10;
 
 					white_count = 0;
@@ -798,7 +764,7 @@ int main()
 					if(white_count <= 30 && black_line == 0 && right_angle == 0)
 					{
 						black_line = 1;
-						buzzer.SetBeep(1);
+						buzzer.SetBeep(0);
 						middle_line = 0;
 						if(ideal_speed == low_ideal_speed)
 							ideal_speed = high_ideal_speed;
@@ -812,7 +778,7 @@ int main()
 					if(black_count >= 4 && middle_line == 0 && black_line == 0 && right_angle == 0)   // added right_angle
 					{
 						middle_line = 1;
-						buzzer.SetBeep(1);
+						buzzer.SetBeep(0);
 						// Change other states to 0
 						cross = 00;
 					}
@@ -859,6 +825,9 @@ int main()
 								break;
 						}
 					}
+
+					if(white_count >= 112 && cross == 10)
+						cross = 11;
 
 						mid_point = (border_l + border_r) / 2;  // print
 				}
@@ -1019,27 +988,16 @@ int main()
 				encoder_r.Update();
 				encoder_l.Update();
 
-				count += (int32_t)(encoder_l.GetCount());
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
 
-				last_ir_encoder_error = ir_encoder_error;
 				ir_encoder_error = ideal_count - count_r;
-				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
-				il_encoder_error_change = il_encoder_error - last_il_encoder_error;
-				ir_encoder_error_change = ir_encoder_error - last_ir_encoder_error;
-
-				total_count_l += (float)count_l * 0.001;
-				total_count_r += (float)count_r * 0.001;
 
 				speed = (count_l + count_r)/ 2;
 
 				last_speed_error = speed_error;
 				speed_error = ideal_speed - speed;
-
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
 				mpu6050.Update();
 				mma8451q.Update();
@@ -1080,13 +1038,9 @@ int main()
 
 				encoder_r.Update();
 				encoder_l.Update();
-				count += (int32_t)(encoder_l.GetCount());
 
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
-
-				total_count_l += (float)count_l * 0.001;
-				total_count_r += (float)count_r * 0.001;
 
 				speed = (count_l + count_r)/ 2;
 				double _temp = 0;
@@ -1104,15 +1058,8 @@ int main()
 
 			    anti_friction_angle = 0;
 
-			    last_ir_encoder_error = ir_encoder_error;
-			    ir_encoder_error = ideal_count - count_r;
-			    last_il_encoder_error = il_encoder_error;
-			    il_encoder_error = ideal_count - count_l;
-			    il_encoder_error_change = il_encoder_error - last_il_encoder_error;
-			    ir_encoder_error_change = ir_encoder_error - last_ir_encoder_error;
-
-			    ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-			    il_encoder_errorsum += (float)il_encoder_error * 0.001;
+				ir_encoder_error = ideal_count - count_r;
+				il_encoder_error = ideal_count - count_l;
 
 			    speed_PID = ideal_speed + speed_Kp * speed_error + speed_Kd * speed_error_change;
 
@@ -1122,13 +1069,11 @@ int main()
 				power_r = ideal_count - speed_PID + (float)ir_encoder_error * encoder_r_Kp;
 				power_l = ideal_count - speed_PID + (float)il_encoder_error * encoder_l_Kp;
 
-//					if(turn > 0)
-//						power_r += turn;
-//					else
-//						power_l -= turn;
+//			    speed_r = 1.935 *(power_r + turn);
+//			    speed_l = 1.745 *(power_l - turn);
 
-			    speed_r = 1.935 *(power_r + turn);
-			    speed_l = 1.745 *(power_l - turn);
+				speed_r = 1.935 * power_r * (1 + libutil::Clamp<float>(-1.0f, turn, 10.0f));
+				speed_l = 1.745 * power_l * (1 - libutil::Clamp<float>(-10.0f, turn, 1.0f));
 
 			    if(speed_l >= 0)
 			    	sign = 0;
@@ -1148,25 +1093,25 @@ int main()
 			    else if(speed_r < -900)
 			    	speed_r = -900;
 
-			    if(right_angle == 11)
-			    {
-			    	if(turn_direction == RIGHT)
-			    	{
-			    		motor_r.SetPower(0);
-			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
-			    	}
-			    	else if(turn_direction == LEFT)
-			    	{
-			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
-			    		motor_l.SetPower(0);
-			    	}
-			    }
-
-			    else
-			    {
+//			    if(right_angle == 11)
+//			    {
+//			    	if(turn_direction == RIGHT)
+//			    	{
+//			    		motor_r.SetPower(0);
+//			    		motor_l.SetPower(int(abs(1.745 * count_l) + 25.3f));
+//			    	}
+//			    	else if(turn_direction == LEFT)
+//			    	{
+//			    		motor_r.SetPower(int(abs(1.935 * count_r) + 27.6f));
+//			    		motor_l.SetPower(0);
+//			    	}
+//			    }
+//
+//			    else
+//			    {
 			    	motor_l.SetPower(int(abs(speed_l) + 25.3f));
 			    	motor_r.SetPower(int(abs(speed_r) + 27.6f));
-			    }
+//			    }
 			}
 
 
@@ -1175,26 +1120,17 @@ int main()
 				yo =0;
 				encoder_r.Update();
 				encoder_l.Update();
-				count += (int32_t)(encoder_l.GetCount());
 
 				count_r = (int32_t)(-encoder_r.GetCount());
 				count_l = (int32_t)(encoder_l.GetCount());
 
-				total_count_l += (float)count_l * 0.001;
-				total_count_r += (float)count_r * 0.001;
-
-				last_ir_encoder_error = ir_encoder_error;
 				ir_encoder_error = ideal_count - count_r;
-				last_il_encoder_error = il_encoder_error;
 				il_encoder_error = ideal_count - count_l;
 
 				speed = (count_l + count_r)/ 2;
 
 				last_speed_error = speed_error;
 				speed_error = ideal_speed - speed;
-
-				ir_encoder_errorsum += (float)ir_encoder_error * 0.001;
-				il_encoder_errorsum += (float)il_encoder_error * 0.001;
 
 				if(angle_error_sum >= 5)
 					angle_error_sum = 5;
@@ -1203,8 +1139,8 @@ int main()
 
 //				angle_offset = float(angle_tuner.GetResult()) / 32.0f - 4.0f;
 //				original_angle += angle_offset;
-
-
+//
+//
 //				if(print_ccd == 0)
 //				{
 //					Byte buf[128 + 2];
@@ -1221,18 +1157,19 @@ int main()
 //					Byte buf[128 + 2];
 //					buf[0] = 'L';
 //					for(int i=0; i<128; i++){
-//						buf[i + 1] = F_Data[i];
+//						buf[i + 1] = U_Data[i];
 //					}
 //					buf[sizeof(buf) - 1] = '\n';
 //					bt.SendBuffer(buf, sizeof(buf));
 //				}
-
-				printf("%f, %f, %f, %f\n", original_angle, output_angle, ideal_count, speed);
-//				if(print_ccd == 0)
-//				printf("%d, %d, %d, %f, %d, %d\n", mid_point, border_l, border_r, original_angle, cross, middle_line);
 //
-//				else
-//				printf("%d, %d, %d, %d, %d, %d\n", up_mid_point, up_border_l, up_border_r, black_line, right_angle, middle_line);
+//				printf("%f, %f, %f, %f\n", original_angle, output_angle, ideal_count, speed);
+
+				if(print_ccd == 0)
+				printf("%d, %d, %d, %d, %d, %d, %d\n", mid_point, border_l, border_r, right_angle, cross, middle_line, black_line);
+
+				else
+				printf("%d, %d, %d, %d, %d, %d\n", up_mid_point, up_border_l, up_border_r, up_l_standard_border, up_r_standard_border, right_angle);
 			}
 		}
 	}
@@ -1253,7 +1190,6 @@ int Middle_pass_filter(uint16_t pixel)
 for(int i = 0;i < 3;i++){
         new_data[i] = past_data[i];
 }
-//cout << "Your past three numbers is:" << new_data[0] << " "<< new_data[1] << " " << new_data[2] << "\n";
 	if(++array_flag < 3){
 
 	}
