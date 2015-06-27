@@ -71,7 +71,7 @@ Mcg::Config Mcg::GetMcgConfig()
 
 float ic_Kp = 1500.0000;                   // Recommend 50
 float ic_Kd = 5500.0000;            	    // Recommend 45
-float ic_Ki = 80;
+float ic_Ki = 50;
 
 float is_Kp = 0.0;                  // Recommend 0.05
 float is_Ki = 0;
