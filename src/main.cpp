@@ -75,15 +75,17 @@ float ic_Ki = 50;
 
 float is_Kp = 0.0;                  // Recommend 0.05
 float is_Ki = 0;
+
 float is_Kd = 0.00;
 float speed_Kp = 0;
 float speed_Kd = 0;
 float ideal_speed = 100;
+
 float speed_PID = 0;
 
-float turn_Kp = 0;         // Recommend
+float turn_Kp = 0.8;         // Recommend
 //float turn_Ki = 0;
-float turn_Kd = 0;
+float turn_Kd = 50;
 
 float encoder_r_Kp = 2.0f;        // Recommend 2
 //float encoder_r_Ki = 0.0;   // Recommend 0.0008
