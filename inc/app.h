@@ -1,66 +1,105 @@
-///*
-// * app.h
-// *
-// *  Created on: 9 Mar, 2015
-// *      Author: sfuab
-// */
-//
-//#include <car.h>
-//
-//#ifndef INC_APP_H_
-//#define INC_APP_H_
-//
-//
-//
-//class App
-//{
-//public:
-//	void Balance_PID();
-//	void Encoder_PID();
-//
-//
-//    int Tuner();
-//
-//private:
-//	Car m_car;
-//	Timer::TimerInt t, pt;
-//	std::array<uint16_t, LinearCcd::kSensorW> Pixel;
-//	float trust_accel, trust_old_accel,
-//	raw_angle, original_angle, accel_angle, raw_accel_angle,
-//	gyro_angle, output_angle, angle_error[3] /* error[0] is now error, error[1] is last error, error[2] is error change */;
-//	float ic_Kp, ic_Kd, is_Kp, is_Kd, encoder_l_Kp, encoder_l_Ki, encoder_r_Kp, encoder_r_Ki;
-//	float ideal_speed, m_speed, speed_error[3]   /* [0] is now, [1] is last, [2] is change*/;
-//	std::array<float, 3>accel, raw_accel, omega;
-//	int ideal_count[2], speed[2],
-//		/* [0] is now,        /*[0] is left
-//		 * [1] is last.        *[1] is right
-//		 */
-//	count_l, count_r, period[5], sign[2] /* [0] is new while [1] is old. */,
-//	encoder_error[4], encoder_error_change[2]  /* [0] is left, [1] is right*/
-//	/* [0] is left new,
-//	 * [1] is left old,
-//	 * [2] is right new,
-//	 * [3] is right old.
-//	 */;
-//	uint16_t ccd_aver;
-//
-//	void EncoderCommon();
-//	void GetAngles();
-//	float GetOutputAngle()
-//	   {return output_angle = gyro_angle;}                                         // Need to use Kalman Filter later
-//	float GetOriginalAngle();
-//	void GetIdealCount();
-//	void GetEncoderValues();
-//	void SetSpeed();
-//	void CcdGetValue();
-//	void CcdGetAver();
-//	void CcdValueFilter();
-//
-//
-//
-//
-//};
-//
-//
-//
-//#endif /* INC_APP_H_ */
+/*
+ * app.h
+ *
+ *  Created on: 9 Mar, 2015
+ *      Author: sfuab
+ */
+
+#include "car.h"
+
+#define TRUST_NOW_SPEED    0.08
+#define TRUST_NOW_TURN     0.3
+#define RIGHT              1
+#define LEFT               0
+#define UP_RIGHTANGLE_MAX  15
+#define UP_NORMAL_WIDE     45
+#define DOWN_NORMAL_WIDE   100
+#define BLACK_LINE_MAX     15
+#define MIDDLE_LINE_MIN    3
+#define MIDDLE_LINE_MAX    7
+
+#ifndef INC_APP_H_
+#define INC_APP_H_
+
+class App
+{
+public:
+	Car m_car;
+	App();
+	void Common(const int time);
+	void Balance_PID();
+	void SetMotors();
+	void Speed_PID();
+	void Turn_PID();
+	void RawAngle();
+	void CcdGetValue(int id, Tsl1401cl *ccd);
+	void UpCcd();
+	void DownCcd();
+	void BluetoothSend();
+
+private:
+	std::array<uint16_t, Tsl1401cl::kSensorW> Data[2];
+	Timer::TimerInt t, pt;
+
+	/* Encoders
+	 *
+	 */
+	float 	count_l, count_r,
+			ideal_count,
+	     	encoder_error[2]  /*  [0] is left, [1] is right  */;
+
+	/* Angles
+	 *
+	 */
+	std::array<float, 3> omega;
+	float original_angle, output_angle,
+		  angle_error[2], angle_error_sum, angle_error_change;
+
+	/* PID
+	 *
+	 */
+	float ic_Kp, ic_Kd, ic_Ki,
+			is_Kp, is_Kd, is_Ki,
+			encoder_l_Kp, encoder_r_Kp,
+			turn_Kp, turn_Kd;
+
+	/* Speed
+	 *
+	 */
+	float ideal_speed, m_speed, speed_error_sum, speed_error[3]   /* [0] is now, [1] is last, [2] is change*/;
+
+	/* Motors
+	 *
+	 */
+	float speed_l, speed_r,
+		  power_l, power_r;
+
+	/* CCD
+	 *
+	 */
+	bool turn_direction;
+	int invalid_pixels[2], average_bound[2],     // cannot be initialized here
+		ccd_average[2],	white_count[2], black_count, mid_point[2];
+	Byte right_angle, black_line, middle_line, cross;
+
+	/* Turn
+	 *
+	 */
+	float turn[2], turn_error[2], turn_error_change;
+	int turn_count;
+	int bt_print;
+	float raw_angle;
+	int border_l[2], border_r[2];
+	int l_standard_border, r_standard_border;
+
+	void GetOutputAngle();
+	void GetIdealCount();
+
+	void FindMidpoint(int id);
+	float GetRawAngle();
+
+};
+
+
+
+#endif /* INC_APP_H_ */

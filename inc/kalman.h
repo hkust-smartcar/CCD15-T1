@@ -15,6 +15,9 @@ public:
 
 	Kalman(double, double*, double, double);
 	void Filtering(double*, double, double);
+	void SetQ(double q){
+		_Q = q;
+	}
 
 private:
 
