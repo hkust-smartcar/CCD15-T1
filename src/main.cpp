@@ -392,15 +392,15 @@ float raw = 0;
 	pGrapher.addWatchedVar(&output_angle,"output_angle");
 	pGrapher.addWatchedVar(&original_angle,"original_angle");
 	pGrapher.addWatchedVar(&accel_angle,"accel_angle");
-	pGrapher.addWatchedVar(&raw,"raw");
-	pGrapher.addWatchedVar(&ideal_speed,"ideal_speed");
+	pGrapher.addWatchedVar(&gyro_angle,"gyro_angleaw");
+//	pGrapher.addWatchedVar(&ideal_speed,"ideal_speed");
 
 	pGrapher.addSharedVar(&ic_Kd,"ic_Kd");
 	pGrapher.addSharedVar(&ic_Kp,"ic_Kp");
 	pGrapher.addSharedVar(&ic_Ki,"ic_Ki");
 			pGrapher.addSharedVar(&trust_accel,"trust_accel");
-	pGrapher.addSharedVar(&turn_Kp,"turn_Kp");
-	pGrapher.addSharedVar(&turn_Kd,"turn_Kd");
+//	pGrapher.addSharedVar(&turn_Kp,"turn_Kp");
+//	pGrapher.addSharedVar(&turn_Kd,"turn_Kd");
 
 	int blue_flag = 0;
 
