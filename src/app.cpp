@@ -5,10 +5,83 @@
  *      Author: sfuab
  */
 
-#include <app.h>
-
+//#include <app.h>
 #include "app.h"
 
+void App::moving_adverage(uint32_t data[],int window){
+	int temp = 0;
+	int temp_data[128];
+	for(int i =0;i<128;i++){
+		temp = 0;
+		if(i==0 || i == 127){
+
+		}
+		else{
+			for(int a=i-1;(a-i+1)<window;a++){
+				temp += data[a];
+			}
+			temp_data[i] = (uint32_t)(temp/(float)window);
+		}
+	}
+	for(int i=0;i<128;i++){
+		data[i] = temp_data[i];
+	}
+}
+void App::gaussian_blur_init(double gaussian_blur_data[],double sigma,const int window){
+	//double kernel[window];
+	int origin = window/2;
+	double sum = 0.0; // For accumulating the kernel values
+	for (int x = 0; x < window; ++x){
+		gaussian_blur_data[x] = exp( -0.5 * (pow((x-origin)/sigma, 2.0)) )
+                        		 / (sigma*pow(2*3.14159,0.5));
+		// Accumulate the kernel values
+		sum += gaussian_blur_data[x];
+	}
+	// Normalize the kernel
+	for (int x = 0; x < window; ++x)
+		gaussian_blur_data[x] /= sum;
+
+}
+
+void App::gaussian_blur(uint32_t data[],double gaussian_blur_data[],int window){
+
+	//const int window = 5;
+	//int kernel[window] = {1,2,4,2,1};
+	//int kernel_sum = 0;
+	//for(int i=0;i<window;i++){
+	//	kernel_sum += kernel[i];
+	//}
+	double temp = 0;
+	uint32_t temp_data[128];
+	for(int i =0;i<128;i++){
+		temp = 0;
+		if(i<window/2 || i > 127-window/2){
+
+		}
+		else{
+			for(int a=i-window/2,z=0;z<window;a++,z++){
+				temp += data[a]*gaussian_blur_data[z];
+			}
+			temp_data[i] = (uint32_t)(temp);
+		}
+	}
+
+	for(int i=0;i<128;i++){
+		data[i] = temp_data[i];
+	}
+}
+void App::pgrapher_setup(){
+	//	pGrapher.addWatchedVar(&output_angle,"output_angle");
+	//	pGrapher.addWatchedVar(&original_angle,"original_angle");
+	//	//		pGrapher.addWatchedVar(&accel_angle,"accel_angle");
+	//	//		pGrapher.addWatchedVar(&gyro_angle,"gyro_angleaw");
+	//	//	pGrapher.addWatchedVar(&ideal_speed,"ideal_speed");
+	//
+	//	pGrapher.addSharedVar(&ic_Kd,"ic_Kd");
+	//	pGrapher.addSharedVar(&ic_Kp,"ic_Kp");
+	//	pGrapher.addSharedVar(&ic_Ki,"ic_Ki");
+	//	//				pGrapher.addSharedVar(&trust_accel,"trust_accel");
+}
 float App::GetRawAngle()
 {
 	t = System::Time();
@@ -67,9 +140,9 @@ void App::GetIdealCount()
 	angle_error[0] = tan((original_angle - output_angle) / 57.29578);
 	angle_error_change = angle_error[0] - angle_error[1];
 	angle_error_sum += angle_error[0];
-	ideal_count = m_car.ic_Kp->GetReal() * angle_error[0]
-				+ m_car.ic_Kd->GetReal() * angle_error_change
-				+ ic_Ki * angle_error_sum;
+	ideal_count = m_car.ic_Kp* angle_error[0]
+										   + m_car.ic_Kd * angle_error_change
+										   + ic_Ki * angle_error_sum;
 }
 
 void App::Balance_PID()
@@ -82,21 +155,21 @@ void App::Speed_PID()
 {
 	// last_speed_error = TRUST_NOW_SPEED * speed_error + (1 - TRUST_NOW_SPEED) * last_speed_error;
 	speed_error[1] = TRUST_NOW_SPEED * speed_error[0] + (1 - TRUST_NOW_SPEED) * speed_error[1];
-	speed_error[0] = TRUST_NOW_SPEED * (m_car.ideal_speed->GetReal() - m_speed) + (1 - TRUST_NOW_SPEED) * speed_error[1];               // speed_error = ideal_speed - speed;
+	speed_error[0] = TRUST_NOW_SPEED * (ideal_speed - m_speed) + (1 - TRUST_NOW_SPEED) * speed_error[1];               // speed_error = ideal_speed - speed;
 	speed_error[2] = speed_error[0] - speed_error[1];     // speed_error_change = (speed_error - last_speed_error)
 	speed_error_sum += speed_error[0];
 
 	float anti_friction_angle = 0.0f;
 
-	if(m_car.ideal_speed->GetReal() != 0)
-		anti_friction_angle = m_car.ideal_speed->GetReal() * 0.0017f;
+	if(ideal_speed != 0)
+		anti_friction_angle = ideal_speed * 0.0017f;
 	else
 		anti_friction_angle = 0;
 
 	original_angle = raw_angle - anti_friction_angle + m_car.car_raw_angle
-					- libutil::Clamp<float>(-9.0f, m_car.is_Kp->GetReal() * speed_error[0]
-					+ m_car.is_Kd->GetReal() * speed_error[2]
-					+ is_Ki * speed_error_sum, 5.5f);
+			- libutil::Clamp<float>(-9.0f, is_Kp * speed_error[0]
+															   + m_car.is_Kd * speed_error[2]
+																						   + is_Ki * speed_error_sum, 5.5f);
 }
 
 void App::SetMotors()
@@ -202,11 +275,11 @@ void App::UpCcd()
 		}
 	}
 
-//	else if(right_angle == 10)
-//	{
-//		if(white_count[1] <= UP_RIGHTANGLE_MAX)
-//			right_angle = 11;
-//	}
+	//	else if(right_angle == 10)
+	//	{
+	//		if(white_count[1] <= UP_RIGHTANGLE_MAX)
+	//			right_angle = 11;
+	//	}
 
 	else if(right_angle == 11)
 	{
@@ -318,14 +391,14 @@ void App::DownCcd()
 		}
 	}
 
-		FindMidpoint(0);
+	FindMidpoint(0);
 
 	if(white_count[0] >= (Tsl1401cl::kSensorW - 2 * invalid_pixels[0] - 2) && cross == 10)
 		cross = 11;
 
 	// cross self-correcting
-//	else if(cross == 11 && white_count[0] < (DOWN_NORMAL_WIDE + 5))
-//		cross = 00;
+	//	else if(cross == 11 && white_count[0] < (DOWN_NORMAL_WIDE + 5))
+	//		cross = 00;
 }
 
 
@@ -396,72 +469,77 @@ void App::Turn_PID()
 }
 
 
-void App::BluetoothSend()
+void App::BluetoothSend()                     //howard
 {
-	if(angle_error_sum >= 3)
-		angle_error_sum = 3;
-	else if(angle_error_sum <= -3)
-		angle_error_sum = -3;
-
-	if(bt_print != m_car.car_bt_print)
-		bt_print = m_car.car_bt_print;
-
-	if(bt_print == 0)
-//					printf("%.2f, %.2f, %d, %d, %d, %d\n", ideal_speed->GetReal(), m_speed, cross, right_angle, middle_line, black_line);
-//					printf(" %f, %f, %f, %f\n", accel_angle, gyro_angle, output_angle, merged_output_angle);
-		printf("%f, %f, %f, %f\n", m_car.ideal_speed->GetReal(), m_speed, original_angle, output_angle);
-
-
-	else if(bt_print == 1)
-		printf("%d, %d, %d, %d, %d, %d\n", mid_point[1], border_l[1], border_r[1], l_standard_border, r_standard_border, right_angle);
-
-	else if(bt_print == 2)
-	{
-		Byte buf[128 + 2];
-		buf[0] = 'L';
-		for(int i=0; i<128; i++){
-			buf[i + 1] = Data[0][i];
-		}
-		buf[sizeof(buf) - 1] = '\n';
-		m_car.m_bt->SendBuffer(buf, sizeof(buf));
-	}
-
-	else if(bt_print == 3)
-	{
-		Byte buf[128 + 2];
-		buf[0] = 'L';
-		for(int i=0; i<128; i++){
-			buf[i + 1] = Data[1][i];
-		}
-		buf[sizeof(buf) - 1] = '\n';
-		m_car.m_bt->SendBuffer(buf, sizeof(buf));
-	}
-
+	//	if(angle_error_sum >= 3)
+	//		angle_error_sum = 3;
+	//	else if(angle_error_sum <= -3)
+	//		angle_error_sum = -3;
+	//
+	//	if(bt_print != m_car.car_bt_print)
+	//		bt_print = m_car.car_bt_print;
+	//
+	//	if(bt_print == 0)
+	////					printf("%.2f, %.2f, %d, %d, %d, %d\n", ideal_speed->GetReal(), m_speed, cross, right_angle, middle_line, black_line);
+	////					printf(" %f, %f, %f, %f\n", accel_angle, gyro_angle, output_angle, merged_output_angle);
+	//		printf("%f, %f, %f, %f\n", m_car.ideal_speed->GetReal(), m_speed, original_angle, output_angle);
+	//
+	//
+	//	else if(bt_print == 1)
+	//		printf("%d, %d, %d, %d, %d, %d\n", mid_point[1], border_l[1], border_r[1], l_standard_border, r_standard_border, right_angle);
+	//
+	//	else if(bt_print == 2)
+	//	{
+	//		Byte buf[128 + 2];
+	//		buf[0] = 'L';
+	//		for(int i=0; i<128; i++){
+	//			buf[i + 1] = Data[0][i];
+	//		}
+	//		buf[sizeof(buf) - 1] = '\n';
+	//		m_car.m_bt->SendBuffer(buf, sizeof(buf));
+	//	}
+	//
+	//	else if(bt_print == 3)
+	//	{
+	//		Byte buf[128 + 2];
+	//		buf[0] = 'L';
+	//		for(int i=0; i<128; i++){
+	//			buf[i + 1] = Data[1][i];
+	//		}
+	//		buf[sizeof(buf) - 1] = '\n';
+	//		m_car.m_bt->SendBuffer(buf, sizeof(buf));
+	//	}
+	//	pGrapher.sendWatchData();
 }
+
+
+
+
 
 App::App():
-		m_car(),
-		t(0), pt(0), count_l(0), count_r(0),
-		ideal_count(0),encoder_error{0, 0},
-		original_angle(0), output_angle(0),
-		angle_error{0, 0}, angle_error_sum(0), angle_error_change(0),
-		ic_Kp(0), ic_Kd(0), ic_Ki(0),
-		is_Kp(0), is_Kd(0), is_Ki(0),
-		encoder_l_Kp(0), encoder_r_Kp(0),
-		turn_Kp(0), turn_Kd(0),
-		ideal_speed(0), m_speed(0), speed_error_sum(0),
-		speed_error{0, 0, 0},speed_l(0), speed_r(0),
-		power_l(0), power_r(0), turn_direction(LEFT),
-		invalid_pixels{7, 20}, average_bound{220, 200},
-		ccd_average{0, 0}, white_count{0, 0}, black_count(0), mid_point{0, 0},
-		right_angle(0), black_line(0), middle_line(0), cross(0),
-		turn{0, 0}, turn_error{0, 0},
-		turn_error_change(0), turn_count(0),
-		bt_print(0), raw_angle(0),
-		border_l{0, 0}, border_r{0, 0},
-		l_standard_border(0), r_standard_border(0)
-{
-}
+						m_car(),
+						t(0), pt(0), count_l(0), count_r(0),
+						ideal_count(0),encoder_error{0, 0},
+						original_angle(0), output_angle(0),
+						angle_error{0, 0}, angle_error_sum(0), angle_error_change(0),
+						ic_Kp(0), ic_Kd(0), ic_Ki(0),
+						is_Kp(0), is_Kd(0), is_Ki(0),
+						encoder_l_Kp(0), encoder_r_Kp(0),
+						turn_Kp(0), turn_Kd(0),
+						ideal_speed(0), m_speed(0), speed_error_sum(0),
+						speed_error{0, 0, 0},speed_l(0), speed_r(0),
+						power_l(0), power_r(0), turn_direction(LEFT),
+						invalid_pixels{7, 20}, average_bound{220, 200},
+						ccd_average{0, 0}, white_count{0, 0}, black_count(0), mid_point{0, 0},
+						right_angle(0), black_line(0), middle_line(0), cross(0),
+						turn{0, 0}, turn_error{0, 0},
+						turn_error_change(0), turn_count(0),
+						bt_print(0), raw_angle(0),
+						border_l{0, 0}, border_r{0, 0},
+						l_standard_border(0), r_standard_border(0)
+						{
+							gaussian_blur_init(gaussian_blur_data,2.5,9 );
+						}
 
 
 

@@ -25,7 +25,7 @@
 #include <libsc/joystick.h>
 #include <libsc/dir_encoder.h>
 #include <libutil/string.h>
-#include <libsc/k60/jy_mcu_bt_106.h>
+//#include <libsc/k60/jy_mcu_bt_106.h>
 #include <libsc/ab_encoder.h>
 #include <libutil/remote_var_manager.h>
 #include "kalman.h"
@@ -34,10 +34,7 @@
 #include "upstand.h"
 #include "app.h"
 #include "car.h"
-
-using namespace libsc;
-using namespace libsc::k60;
-using namespace libutil;
+#include "MyVarManager.h"
 
 int main()
 {
@@ -48,8 +45,20 @@ int main()
 	Byte ccd_id = 0;
 
 	App m_app;
-
 	m_app.RawAngle();
+//	m_app.pgrapher_setup();
+	//	//graph testing variable
+	//
+//	MyVarManager pGrapher;
+		//	//graph testing variable
+		//
+	float ha = 10;
+	MyVarManager pGrapher;
+
+		pGrapher.addWatchedVar(&ha,"ha");
+
+
+
 
 	while(1){
 		t = System::Time();
@@ -133,7 +142,8 @@ int main()
 			yo =0;
 
 			m_app.Common(1);
-			m_app.BluetoothSend();
+			pGrapher.sendWatchData();
+//			m_app.BluetoothSend();
 		}
 
 

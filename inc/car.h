@@ -33,6 +33,7 @@
 #include <libsc/button.h>
 #include <libsc/simple_buzzer.h>
 #include "upstand.h"
+#include "MyvarManager.h"
 
 using namespace libsc;
 using namespace libsc::k60;
@@ -65,11 +66,13 @@ public:
 	int car_bt_print;
 	float car_raw_angle;
 
-	RemoteVarManager::Var* is_Kp;
-	RemoteVarManager::Var* is_Kd;
-	RemoteVarManager::Var* ideal_speed;
-	RemoteVarManager::Var* ic_Kp;
-	RemoteVarManager::Var* ic_Kd;
+//	RemoteVarManager::Var* is_Kp;
+//	RemoteVarManager::Var* is_Kd;
+//	RemoteVarManager::Var* ideal_speed;
+//	RemoteVarManager::Var* ic_Kp;
+//	RemoteVarManager::Var* ic_Kd;
+
+	float output_angle,original_angle,accel_angle,gyro_angle,ic_Kd,ic_Kp,ic_Ki,trust_accel,ideal_speed,is_Kp,is_Kd;
 
 	void SelectLeft(const uint8_t)
 	{

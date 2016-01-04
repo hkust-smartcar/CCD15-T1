@@ -36,8 +36,14 @@ public:
 	void UpCcd();
 	void DownCcd();
 	void BluetoothSend();
+	void pgrapher_setup();
+	void moving_adverage(uint32_t data[],int window);
+	void gaussian_blur_init(double gaussian_blur_data[],double sigma,const int window);
+	void gaussian_blur(uint32_t data[],double gaussian_blur_data[],int window);
 
 private:
+//	MyVarManager pGrapher;
+
 	std::array<uint16_t, Tsl1401cl::kSensorW> Data[2];
 	Timer::TimerInt t, pt;
 
@@ -81,6 +87,7 @@ private:
 	int invalid_pixels[2], average_bound[2],     // cannot be initialized here
 		ccd_average[2],	white_count[2], black_count, mid_point[2];
 	Byte right_angle, black_line, middle_line, cross;
+	double gaussian_blur_data[128];
 
 	/* Turn
 	 *
