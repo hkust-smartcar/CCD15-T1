@@ -24,8 +24,15 @@
 class App
 {
 public:
+	int16_t power = 0;
+	int16_t encoder_l = 0;
+	int16_t encoder_r = 0;
 	Car m_car;
-	App();
+	Adverage adv_accel;
+	MyVarManager pGrapher;
+	MyFlash   m_flash;
+	MyVar m_var;
+	explicit App(void);
 	void Common(const int time);
 	void Balance_PID();
 	void SetMotors();
@@ -37,13 +44,11 @@ public:
 	void DownCcd();
 	void BluetoothSend();
 	void pgrapher_setup();
-	void moving_adverage(uint32_t data[],int window);
 	void gaussian_blur_init(double gaussian_blur_data[],double sigma,const int window);
-	void gaussian_blur(uint32_t data[],double gaussian_blur_data[],int window);
+	void print_ccd(uint16_t color,int ccd_id);
+	void gaussian_blur(int id,double gaussian_blur_data[],int window);
 
 private:
-//	MyVarManager pGrapher;
-
 	std::array<uint16_t, Tsl1401cl::kSensorW> Data[2];
 	Timer::TimerInt t, pt;
 
@@ -51,23 +56,24 @@ private:
 	 *
 	 */
 	float 	count_l, count_r,
-			ideal_count,
-	     	encoder_error[2]  /*  [0] is left, [1] is right  */;
+	ideal_count,
+	encoder_error[2]  /*  [0] is left, [1] is right  */;
 
 	/* Angles
 	 *
 	 */
 	std::array<float, 3> omega;
-	float original_angle, output_angle,
-		  angle_error[2], angle_error_sum, angle_error_change;
+	std::array<float, 3> accel;
+	float original_angle, output_angle,accel_angle,gyro_angle,com_filtered,time_interval,gyro_gap,last_omega,current_omega,
+	angle_error[2], angle_error_sum, angle_error_change;
 
 	/* PID
 	 *
 	 */
 	float ic_Kp, ic_Kd, ic_Ki,
-			is_Kp, is_Kd, is_Ki,
-			encoder_l_Kp, encoder_r_Kp,
-			turn_Kp, turn_Kd;
+	is_Kp, is_Kd, is_Ki,
+	encoder_l_Kp, encoder_r_Kp,
+	turn_Kp, turn_Kd,trust_accel;
 
 	/* Speed
 	 *
@@ -78,32 +84,36 @@ private:
 	 *
 	 */
 	float speed_l, speed_r,
-		  power_l, power_r;
+	power_l, power_r;
 
 	/* CCD
 	 *
 	 */
 	bool turn_direction;
 	int invalid_pixels[2], average_bound[2],     // cannot be initialized here
-		ccd_average[2],	white_count[2], black_count, mid_point[2];
+	ccd_average[2],	white_count[2], black_count, mid_point[2];
+	int16_t mid_point_ha,l_edge,r_edge,drop_difference;
 	Byte right_angle, black_line, middle_line, cross;
 	double gaussian_blur_data[128];
 
 	/* Turn
 	 *
 	 */
-	float turn[2], turn_error[2], turn_error_change;
+	float turn[2], turn_error[2], turn_error_change,turn_pid_l,turn_pid_r;
 	int turn_count;
 	int bt_print;
 	float raw_angle;
 	int border_l[2], border_r[2];
 	int l_standard_border, r_standard_border;
 
+	//testing flash
+	float *testing;
+
 	void GetOutputAngle();
 	void GetIdealCount();
 
 	void FindMidpoint(int id);
-	float GetRawAngle();
+	void GetRawAngle();
 
 };
 

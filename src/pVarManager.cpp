@@ -2,7 +2,7 @@
  * MyVarManager.cpp
  *
  * Author: PeterLau
- * Version: 3.0.0
+ * Version: 3.1.0
  *
  * Copyright (c) 2014-2015 HKUST SmartCar Team
  * Refer to LICENSE for details
@@ -18,7 +18,7 @@
 #include <libbase/k60/sys_tick.h>
 #include <libsc/k60/jy_mcu_bt_106.h>
 
-#include "MyVarManager.h"
+#include "pVarManager.h"
 
 // TODO: enable following preprocessor command
 //#ifdef LIBSC_USE_UART
@@ -46,6 +46,7 @@ inline uint8_t inRangeWithAssert(uint8_t n, uint8_t v, uint8_t x)
 JyMcuBt106::Config MyVarManager::get106UartConfig(const uint8_t id)
 {
 	JyMcuBt106::Config config;
+	config.id = id;
 	config.baud_rate = libbase::k60::Uart::Config::BaudRate::k115200;
 	config.rx_irq_threshold = rx_threshold;
 	config.is_rx_irq_threshold_percentage = false;
@@ -67,8 +68,8 @@ FtdiFt232r::Config MyVarManager::get232UartConfig(const uint8_t id)
 
 MyVarManager::MyVarManager(void)
 :
-	rx_threshold(7),
 	isStarted(false),
+	rx_threshold(7),
 	m_uart(get106UartConfig(0))
 {
 	m_pd_instance = this;
@@ -82,8 +83,9 @@ MyVarManager::~MyVarManager()
 	watchedObjMng.clear();
 }
 
-bool MyVarManager::listener(const std::vector<Byte> &bytes)
+bool MyVarManager::listener(const Byte *data, const size_t size)
 {
+	vector<Byte> bytes(data, data + size);
 	m_pd_instance->rx_buffer.insert(m_pd_instance->rx_buffer.end(), bytes.begin(), bytes.end());
 
 	if (m_pd_instance->rx_buffer.size() < m_pd_instance->rx_threshold)
@@ -167,27 +169,38 @@ void MyVarManager::changeSharedVars(const std::vector<Byte> &msg)
 	int objIndex = inRangeWithAssert(0, msg[2], sharedObjMng.size());
 	for (int i = 0; i < sharedObjMng[objIndex].len; i++)
 		((Byte *)(sharedObjMng[objIndex].obj))[i] = msg[3 + i];
+
+	if (m_onChanged_listener)
+		m_onChanged_listener();
 }
 
-void MyVarManager::Init(void)
+void MyVarManager::SetOnReceiveListener(const OnReceiveListener &oriListener)
 {
 	if (!isStarted)
-	{
 		if (!m_origin_listener)
-			m_origin_listener = nullptr;
-	}
+			m_origin_listener = oriListener;
 }
 
-void MyVarManager::Init(const OnReceiveListener &oriListener)
+void MyVarManager::SetOnChangedListener(const OnChangedListener &changedlistener)
 {
 	if (!isStarted)
-	{
-		m_origin_listener = oriListener;
-	}
+		if (!m_onChanged_listener)
+			m_onChanged_listener = changedlistener;
 }
 
-void MyVarManager::UnInit(void)
+void MyVarManager::RemoveOnReceiveListener(void)
 {
+	m_origin_listener = nullptr;
+}
+
+void MyVarManager::RemoveOnChangedListener(void)
+{
+	m_origin_listener = nullptr;
+}
+
+void MyVarManager::RemoveAllListeners(void)
+{
+	m_origin_listener = nullptr;
 	m_origin_listener = nullptr;
 }
 

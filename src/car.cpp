@@ -49,9 +49,9 @@ Mpu6050::Config Get_Gyro_Config()
 {
 	Mpu6050::Config gyro_config;
 	//sensitivity of gyro
-	gyro_config.gyro_range = Mpu6050::Config::Range::kLarge;
+	gyro_config.gyro_range = Mpu6050::Config::Range::kSmall;
 	//sensitivity of accelerometer
-	gyro_config.accel_range = Mpu6050::Config::Range::kLarge;
+	gyro_config.accel_range = Mpu6050::Config::Range::kSmall;
 	gyro_config.cal_drift = true;
 	return gyro_config;
 }
@@ -62,22 +62,22 @@ Mma8451q::Config Get_Accel_Config(Mpu6050 *m_mpu6050)
 	accel_config.id = 0;
 	accel_config.power_mode = Mma8451q::Config::PowerMode::kLowNoiseLowPower;
 	accel_config.output_data_rate = Mma8451q::Config::OutputDataRate::k200Hz;
-	accel_config.i2c_master_ptr = m_mpu6050->GetI2cMaster();
+	//	accel_config.i2c_master_ptr = m_mpu6050->GetI2cMaster();
 	return accel_config;
 }
 
 
 
-DirMotor::Config Get_Motor_L_Config()
+AlternateMotor::Config Get_Motor_L_Config()
 {
-	DirMotor::Config l_motor;
-	l_motor.id = 0;
+	AlternateMotor::Config l_motor;
+	l_motor.id = 1;
 	return l_motor;
 }
-DirMotor::Config Get_Motor_R_Config()
+AlternateMotor::Config Get_Motor_R_Config()
 {
-	DirMotor::Config r_motor;
-	r_motor.id = 1;
+	AlternateMotor::Config r_motor;
+	r_motor.id = 0;
 	return r_motor;
 }
 
@@ -113,6 +113,13 @@ St7735r::Config Get_Lcd_Config()
 {
 	St7735r::Config lcd_config;
 	lcd_config.is_revert = false;
+	return lcd_config;
+}
+
+LcdTypewriter::Config Get_Lcd_console_Config(St7735r *lcd){
+	LcdTypewriter::Config lcd_config;
+	lcd_config.lcd = lcd;
+	lcd_config.is_text_wrap = true;
 	return lcd_config;
 }
 
@@ -163,25 +170,28 @@ SimpleBuzzer::Config Get_Buzzer_Config()
 
 
 Car::Car():
-				border_state(0), car_bt_print(0), car_raw_angle(0)
+										border_state(0), car_bt_print(0), car_raw_angle(0)
 {
 	//	varmanager = new RemoteVarManager(5);
-//		m_bt = new JyMcuBt106(Get_Bluetooth_Config(varmanager));
+	//		m_bt = new JyMcuBt106(Get_Bluetooth_Config(varmanager));
 	m_mpu6050 = new Mpu6050(Get_Gyro_Config());
 	m_mma8451q = new Mma8451q(Get_Accel_Config(m_mpu6050));
-	m_joy = new Joystick(Get_Joystick_Config());
-	motor_l = new DirMotor(Get_Motor_L_Config());
-	motor_r = new DirMotor(Get_Motor_R_Config());
+	//	m_joy = new Joystick(Get_Joystick_Config());
+	//	motor_l = new DirMotor(Get_Motor_L_Config());
+	//	motor_r = new DirMotor(Get_Motor_R_Config());
+	motor_l = new AlternateMotor(Get_Motor_L_Config());
+	motor_r = new AlternateMotor(Get_Motor_R_Config());
 	encoder_l = new AbEncoder(Get_Encoder_L_Config());
 	encoder_r = new AbEncoder(Get_Encoder_R_Config());
 	//	PowerTest = new libbase::k60::Adc(Get_PowerTest_Config());
 	//	angle_tuner = new libbase::k60::Adc(Get_Angle_Tuner_Config());
 	m_lcd = new St7735r(Get_Lcd_Config());
+	//	m_lcd_console = new LcdTypewriter(Get_Lcd_console_Config(m_lcd));
 	m_button0 = new Button(Get_Button0_Config());
 	m_button1 = new Button(Get_Button1_Config());
-//	m_led0 = new libsc::Led(Get_LED0_Config());
-//	m_led1 = new libsc::Led(Get_LED1_Config());
-//	m_led2 = new libsc::Led(Get_LED2_Config());
+	//	m_led0 = new libsc::Led(Get_LED0_Config());
+	//	m_led1 = new libsc::Led(Get_LED1_Config());
+	//	m_led2 = new libsc::Led(Get_LED2_Config());
 	ccd_down = new Tsl1401cl(0);
 	ccd_up = new Tsl1401cl(1);
 	m_buzzer = new SimpleBuzzer(Get_Buzzer_Config());
@@ -191,7 +201,7 @@ Car::Car():
 	motor_l->SetPower(0);
 	motor_r->SetPower(0);
 
-//	libutil::InitDefaultFwriteHandler(m_bt);
+	//	libutil::InitDefaultFwriteHandler(m_bt);
 
 	double _R[2] = {0.05, -1};
 	speedKF = new Kalman(0.000007, _R, 0.0, 1.0);

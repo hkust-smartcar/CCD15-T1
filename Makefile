@@ -4,7 +4,7 @@ BUILD_PATH=build
 LIBSCCC_INC_PATH?=lib/sccc/inc
 LIBSCCC_BIN_PATH?=lib/sccc/lib
 LIBSCCC_BIN?=sccc
-OUT_EXE=ccd15
+OUT_EXE=inno14
 OUT_EXE_SUFFIX=.elf
 OUT_EXE_PATH=bin
 OUT_OBJ_PATH=obj
@@ -149,7 +149,7 @@ LDLIBS+=$(addprefix -l,$(ALL_LIBS)) -l$(LIBSCCC_BIN)$(BIN_SUFFIX)
 $(info Building $(OUT_EXE)$(BIN_SUFFIX)$(OUT_EXE_SUFFIX))
 
 ifdef WIN32
-rwildcard=$(wildcard $1/$2) $(foreach d,$(wildcard $1),$(call rwildcard,$(d),$2))
+rwildcard=$(wildcard $1/$2) $(foreach d,$(wildcard $1/*),$(call rwildcard,$(d),$2))
 SRC_FILES:=$(call rwildcard,$(SRC_PATH),*.c)
 SRC_FILES:=$(SRC_FILES) $(call rwildcard,$(SRC_PATH),*.S)
 SRC_FILES:=$(SRC_FILES) $(call rwildcard,$(SRC_PATH),*.cpp)
@@ -206,7 +206,7 @@ ifdef WIN32
 	@rmdir /s /q $(OUT_OBJ_PATH) $(OUT_LIB_PATH)
 
 else ifdef UNIX
-	@rm -f $(OUT_LIB_PATH).a
+	@rm -f $(OUT_LIB_PATH)/*.a
 	@find $(OUT_OBJ_PATH) -type f \( -name *.o -o -name *.d \) -exec rm -f {} \;
 
 endif

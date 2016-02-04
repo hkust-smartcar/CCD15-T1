@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include <libbase/helper.h>
 #include <libbase/k60/mcg.h>
 #include <libsc/led.h>
 #include <libsc/system.h>
@@ -33,10 +34,20 @@
 #include <libsc/button.h>
 #include <libsc/simple_buzzer.h>
 #include "upstand.h"
-#include "MyvarManager.h"
+#include "Adverage.h"
+#include <cmath>
+#include <libbase/k60/flash.h>
+#include "MyFlash.h"
+#include "MyVar.h"
+#include "pVarManager.h"
 
+//using namespace libsc;
+//using namespace libsc::k60;
+//using namespace libutil;
+using namespace LIBBASE_NS;
 using namespace libsc;
-using namespace libsc::k60;
+using namespace LIBSC_NS;
+using namespace LIBSC_NS;
 using namespace libutil;
 
 
@@ -44,15 +55,17 @@ using namespace libutil;
 class Car{
 public:
 	Car();
-	RemoteVarManager* varmanager;
-	JyMcuBt106 *m_bt;
+//	RemoteVarManager* varmanager;
+//	JyMcuBt106 *m_bt;
 	Mpu6050 *m_mpu6050;
 	Mma8451q *m_mma8451q;
 	Joystick *m_joy;
-	DirMotor *motor_l, *motor_r;
+//	DirMotor *motor_l, *motor_r;
+	AlternateMotor *motor_l, *motor_r;
 	AbEncoder *encoder_l, *encoder_r;
 //	libbase::k60::Adc *PowerTest, *angle_tuner;
 	St7735r *m_lcd;
+	LcdTypewriter *m_lcd_console;
 	Button *m_button0, *m_button1;
 	libsc::Led *m_led0, *m_led1, *m_led2;
 	Tsl1401cl *ccd_down, *ccd_up;
@@ -72,7 +85,7 @@ public:
 //	RemoteVarManager::Var* ic_Kp;
 //	RemoteVarManager::Var* ic_Kd;
 
-	float output_angle,original_angle,accel_angle,gyro_angle,ic_Kd,ic_Kp,ic_Ki,trust_accel,ideal_speed,is_Kp,is_Kd;
+//	float output_angle,original_angle,accel_angle,gyro_angle,ic_Kd,ic_Kp,ic_Ki,trust_accel,ideal_speed,is_Kp,is_Kd;
 
 	void SelectLeft(const uint8_t)
 	{
